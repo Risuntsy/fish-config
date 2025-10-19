@@ -41,6 +41,6 @@ function fd_clean_ds_store
     if test (count $argv) -eq 0
         fd --hidden --type f .DS_Store . --exec-batch rm
     else
-        fd --hidden --type f .DS_Store $argv[0] --exec-batch rm
+        fd --hidden --type f .DS_Store $argv[1] --exec-batch rm
     end
 end
