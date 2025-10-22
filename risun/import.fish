@@ -1,4 +1,11 @@
 function import
+    if test -f $argv[1]
+        source $argv[1]
+        return
+    end
+    if not test -d $argv[1]
+        return
+    end
     set -l folder $argv[1]
     for f in $folder/*.fish
         if test -f $f
