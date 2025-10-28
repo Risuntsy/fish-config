@@ -27,3 +27,8 @@ function _awake_run
         $argv
     end
 end
+
+
+function fish_reload
+    source ~/.config/fish/config.fish
+end
