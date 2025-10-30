@@ -31,3 +31,13 @@ function mpv
         return 1
     end
 end
+
+
+function mpv_top
+    if command --query mpv
+        command mpv $argv --really-quiet --no-terminal --ontop
+    else
+        echo "mpv not found, do nothing"
+        return 1
+    end
+end

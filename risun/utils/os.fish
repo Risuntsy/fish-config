@@ -21,3 +21,12 @@ function _is_nixos
         return 1
     end
 end
+
+
+function _is_archlinux
+    if test -f /etc/os-release; and grep -q "Arch Linux" /etc/os-release
+        return 0
+    else
+        return 1
+    end
+end

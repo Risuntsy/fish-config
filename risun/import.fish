@@ -33,3 +33,7 @@ end
 if _is_linux
     import ~/.config/fish/risun/linux
 end
+
+if _is_archlinux
+    import ~/.config/fish/risun/archlinux
+end
