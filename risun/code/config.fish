@@ -36,3 +36,7 @@ end
 function code_config_arch
     code_common ~/Note/memo/os/linux/distro/arch
 end
+
+function code_config_sing_box
+    code_web ~/Note/config/sing-box
+end

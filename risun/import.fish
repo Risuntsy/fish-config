@@ -37,3 +37,5 @@ end
 if _is_archlinux
     import ~/.config/fish/risun/archlinux
 end
+
+import ~/.config/fish/risun/override
