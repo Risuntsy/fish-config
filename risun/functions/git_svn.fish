@@ -16,9 +16,15 @@ function git_svn_rebase
         git stash pop; or return $status
     end
 end
-
-
 function git_svn_dcommit
+    # Check if current branch is main
+    set current_branch (git branch --show-current)
+    if test "$current_branch" != "main"
+        echo "Error: git svn dcommit can only be run from the 'main' branch"
+        echo "Current branch: $current_branch"
+        return 1
+    end
+    
     # Always rebase first to get latest changes
     echo "Updating from SVN repository..."
     
@@ -32,6 +38,18 @@ function git_svn_dcommit
     
     # Always rebase first
     git svn rebase; or return $status
+
+    # Prompt user to continue
+    echo "Ready to commit to SVN. Continue? [Y/n]"
+    read -P "> " response
+    if test "$response" = "n" -o "$response" = "N"
+        echo "Operation cancelled."
+        # Restore stash if we had local changes
+        if test -n "$local_changes"
+            git stash pop; or return $status
+        end
+        return 1
+    end
 
     # Now dcommit
     git svn dcommit; or return $status
