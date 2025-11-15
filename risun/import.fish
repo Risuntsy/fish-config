@@ -14,6 +14,8 @@ function import
     end
 end
 
+set -U fish_greeting ""
+
 if test -f ~/.config/fish/risun/secret.fish
     source ~/.config/fish/risun/secret.fish
 end

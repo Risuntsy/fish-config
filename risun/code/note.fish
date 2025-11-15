@@ -15,8 +15,7 @@ function code_note_config
 end
 
 function code_note_config_push
-    set origin_path (pwd)
-    cd ~/Note/config
+    pushd ~/Note/config
     ./push.sh
-    cd $origin_path
+    popd
 end

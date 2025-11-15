@@ -40,3 +40,10 @@ end
 function code_config_sing_box
     code_web ~/Note/config/sing-box
 end
+
+if _is_linux
+    function code_config_container
+        code_common ~/.config/containers
+    end
+end
+
