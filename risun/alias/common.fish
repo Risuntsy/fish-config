@@ -2,9 +2,9 @@ function cat
     bat $argv
 end
 
-function ls
-    eza --color=always $argv
-end
+# function ls
+#     eza --color=always $argv
+# end
 
 function df
     duf $argv
