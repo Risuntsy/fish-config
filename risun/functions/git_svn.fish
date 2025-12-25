@@ -59,3 +59,9 @@ function git_svn_dcommit
         git stash pop; or return $status
     end
 end
+
+
+function svn_cleanup
+    svn revert . --recursive; or return $status
+    svn cleanup; or return $status
+end
