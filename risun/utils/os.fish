@@ -30,3 +30,8 @@ function _is_archlinux
         return 1
     end
 end
+
+
+function _is_fedora
+    test -f /etc/fedora-release
+end

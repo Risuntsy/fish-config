@@ -27,3 +27,14 @@ function _awake_run
         $argv
     end
 end
+
+
+function dnf_clean
+    if command -q dnf
+        sudo dnf clean all
+        sudo dnf update --refresh
+    else
+        echo "dnf not found, do nothing"
+        return 1
+    end
+end

@@ -8,3 +8,8 @@ end
 if not contains $HOME/.cargo/bin $PATH; and command -q rustup; and test -d $HOME/.cargo/bin
     fish_add_path $HOME/.cargo/bin
 end
+
+
+if test -d "$HOME/App/.bin"; and not contains $HOME/App/.bin $PATH
+    fish_add_path $HOME/App/.bin
+end
