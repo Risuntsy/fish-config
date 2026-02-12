@@ -19,12 +19,11 @@ end
 function git_svn_dcommit
     # Check if current branch is main
     set current_branch (git branch --show-current)
-    if test "$current_branch" != "main"
-        echo "Error: git svn dcommit can only be run from the 'main' branch"
+    if not string match -q "*main*" -- $current_branch
+        echo "Error: git svn dcommit can only be run from a branch containing 'main'"
         echo "Current branch: $current_branch"
         return 1
     end
-    
     # Always rebase first to get latest changes
     echo "Updating from SVN repository..."
     
