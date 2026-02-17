@@ -66,8 +66,10 @@ function maa_arknights_shutdown_x5m2
 end
 
 function maa_arknights_daily_x5m2
+    set -l date_str (date +%Y-%m-%d)
     set -l save_screenshot_dir ~/Pictures/maa/(date +%y%m)
-    set -l screenshot_file_path "$save_screenshot_dir/$(date +%Y-%m-%d).png"
+    set -l screenshot_file_path "$save_screenshot_dir/${date_str}.png"
+    set -l device_screenshot "/sdcard/${date_str}_daily.png"
     set -l device_sn QV72130554
 
     adb -s $device_sn shell settings put global stay_on_while_plugged_in 7; or return $status
@@ -80,12 +82,37 @@ function maa_arknights_daily_x5m2
 
     if test $status -eq 0
         mkdir -p "$save_screenshot_dir"; or return $status
-        adb -s $device_sn exec-out screencap -p > $screenshot_file_path; or return $status
+        adb -s $device_sn shell screencap $device_screenshot; or return $status
+        adb -s $device_sn pull $device_screenshot "$screenshot_file_path"; or return $status
+        adb -s $device_sn shell rm -f $device_screenshot
 
         _open $screenshot_file_path; or return $status
     end
 
     maa_arknights_shutdown_x5m2; or return $status
+end
+
+
+function maa_arknights_daily_waydroid
+    set -l date_str (date +%Y-%m-%d)
+    set -l save_screenshot_dir ~/Pictures/maa/(date +%y%m)
+    set -l screenshot_file_path "$save_screenshot_dir/${date_str}.png"
+    set -l device_screenshot "/sdcard/${date_str}_daily.png"
+    set -l device_sn 192.168.240.112
+
+    if not _is_nixos
+        maa update; or return $status
+    end
+    _awake_run maa run -p waydroid -v daily
+
+    if test $status -eq 0
+        mkdir -p "$save_screenshot_dir"; or return $status
+        adb -s $device_sn shell screencap $device_screenshot; or return $status
+        adb -s $device_sn pull $device_screenshot "$screenshot_file_path"; or return $status
+        adb -s $device_sn shell rm -f $device_screenshot
+
+        _open $screenshot_file_path; or return $status
+    end
 end
 
 function maa_arknights_start_x5m2
