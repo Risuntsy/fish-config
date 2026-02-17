@@ -3,7 +3,7 @@ function code_config_fish
 end
 
 function cursor_config_fish
-    cursor ~/.config/fish --profile common
+    cursor ~/.config/fish
 end
 
 function code_config_maa
@@ -17,7 +17,7 @@ end
 
 function cursor_config_maa
     if command -q maa
-        cursor $(maa dir config) --profile web
+        cursor $(maa dir config)
     else
         echo "maa not found"
         return 1
@@ -35,7 +35,7 @@ end
 
 function cursor_config_gradle
     if test -d ~/.gradle
-        cursor ~/.gradle --profile java
+        cursor ~/.gradle
     else
         echo "~/.gradle not found"
         return 1
