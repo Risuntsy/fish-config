@@ -68,8 +68,8 @@ end
 function maa_arknights_daily_x5m2
     set -l date_str (date +%Y-%m-%d)
     set -l save_screenshot_dir ~/Pictures/maa/(date +%y%m)
-    set -l screenshot_file_path "$save_screenshot_dir/${date_str}.png"
-    set -l device_screenshot "/sdcard/${date_str}_daily.png"
+    set -l screenshot_file_path "$save_screenshot_dir/{$date_str}.png"
+    set -l device_screenshot "/sdcard/{$date_str}_daily.png"
     set -l device_sn QV72130554
 
     adb -s $device_sn shell settings put global stay_on_while_plugged_in 7; or return $status
@@ -96,8 +96,8 @@ end
 function maa_arknights_daily_waydroid
     set -l date_str (date +%Y-%m-%d)
     set -l save_screenshot_dir ~/Pictures/maa/(date +%y%m)
-    set -l screenshot_file_path "$save_screenshot_dir/${date_str}.png"
-    set -l device_screenshot "/sdcard/${date_str}_daily.png"
+    set -l screenshot_file_path "$save_screenshot_dir/{$date_str}.png"
+    set -l device_screenshot "/sdcard/{$date_str}_daily.png"
     set -l device_sn 192.168.240.112
 
     if not _is_nixos
