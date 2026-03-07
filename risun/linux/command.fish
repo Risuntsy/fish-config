@@ -8,7 +8,7 @@ function update_system --description "Update the system packages"
     end
 
     if _is_fedora
-        sudo dnf update
+        sudo dnf update --refresh
     end
 
     if command -q flatpak
@@ -22,3 +22,12 @@ function update_system --description "Update the system packages"
         end
     end
 end
+
+function rsync_copy_incr
+    if test (count $argv) -lt 2
+        echo "Usage: rsync_copy_incr <source> <destination>"
+        return 1
+    end
+    rsync -av --update --delete $argv[1]/ $argv[2]/
+end
+
