@@ -159,3 +159,31 @@ function code_note_config_push
     ./push.sh
     popd
 end
+
+
+function code_config_fcitx
+    if _is_linux
+        if test -d ~/.local/share/fcitx5/rime/
+            code_web ~/.local/share/fcitx5/rime/
+        else
+            return 1
+        end
+    end
+
+    echo 'not support yet'
+    return -1
+end
+
+
+function cursor_config_fcitx
+    if _is_linux
+        if test -d ~/.local/share/fcitx5/rime/
+            cursor ~/.local/share/fcitx5/rime/
+        else
+            return 1
+        end
+    end
+
+    echo 'not support yet'
+    return -1
+end
