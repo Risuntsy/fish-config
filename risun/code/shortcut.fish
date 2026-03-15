@@ -189,6 +189,10 @@ function cursor_note_app
     cursor ~/App
 end
 
+function zed_note_app
+    zed ~/App
+end
+
 function code_note_memo
     code ~/Note/memo --profile web
 end
