@@ -9,7 +9,7 @@ if set -q ssh_servers
         # SSH function
         eval "
 function ssh_$name
-    ssh $address
+    ssh $address \$argv
 end
 "
 
