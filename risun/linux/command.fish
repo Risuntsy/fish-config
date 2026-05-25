@@ -2,6 +2,8 @@ function update_system --description "Update the system packages"
     if _is_archlinux
         if command -q yay
             yay -Syu
+        else if command -q paru
+            paru -Syu
         else
             sudo pacman -Syu
         end

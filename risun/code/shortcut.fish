@@ -161,11 +161,13 @@ function code_note_config_push
 end
 
 
-function code_config_fcitx
+function code_config_fcitx_rime
     if _is_linux
         if test -d ~/.local/share/fcitx5/rime/
             code_web ~/.local/share/fcitx5/rime/
+            return 0
         else
+            echo "config folder not found"
             return 1
         end
     end
@@ -186,4 +188,13 @@ function zed_config_fcitx
 
     echo 'not support yet'
     return -1
+end
+
+function code_config_opencode
+    code_web ~/.config/opencode 
+end
+
+
+function code_config_antigravity_cli
+    code_web ~/.gemini/antigravity-cli
 end

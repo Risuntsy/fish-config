@@ -121,3 +121,9 @@ function maa_arknights_start_x5m2
     adb -s $device_sn shell settings put global stay_on_while_plugged_in 7; or return $status
     adb -s $device_sn shell input keyevent KEYCODE_WAKEUP; or return $status
 end
+
+
+function maaend
+    cp $HOME/App/MaaFramework/build/bin/Release/*.so $HOME/App/maaend/maafw/
+    $HOME/App/maaend/MaaEnd $argv
+end
