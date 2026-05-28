@@ -104,5 +104,16 @@ function hypergryph_install --description "Run a Hypergryph installer exe into t
 end
 
 function labwc_endfield_daily --description "Launch Arknights Endfield daily build via labwc"
-    labwc -S "env WINEPREFIX=\"$HOME/Games/arknights_endfield_daily\" PROTONPATH=\"$DW_PROTON_PATH\" umu-run \"$HOME/Games/.bin/Arknights Endfield/Endfield.exe\""
+    WLR_BACKENDS=headless labwc -S "env WINEPREFIX=\"$HOME/Games/arknights_endfield_daily\" PROTONPATH=\"$DW_PROTON_PATH\" umu-run \"$HOME/Games/.bin/Arknights Endfield/Endfield.exe\""
 end
+
+function endfield_daily_stop --description "Stop Arknights Endfield daily build by killing its wineserver"
+    set -lx PROTONPATH $DW_PROTON_PATH
+    set -lx WINEPREFIX "$HOME/Games/arknights_endfield_daily"
+    wineserver_kill
+end
+
+function cage_endfield_daily --description "Launch Arknights Endfield daily build via cage"
+    cage bash -- -c "env WINEPREFIX=\"$HOME/Games/arknights_endfield_daily\" PROTONPATH=\"$DW_PROTON_PATH\" umu-run \"$HOME/Games/.bin/Arknights Endfield/Endfield.exe\""
+end
+
