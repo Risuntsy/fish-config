@@ -3,6 +3,7 @@
 set -g DW_PROTON_PATH "/home/risun/.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d/DW-Proton Latest"
 
 function wuwa --description "Launch Wuthering Waves via umu-run"
+    cd "$HOME/Games/.bin/wuwa"
     set -l proton_path $DW_PROTON_PATH
     set -l game_exe "$HOME/Games/.bin/wuwa/Wuthering Waves.exe"
 
@@ -104,6 +105,7 @@ function hypergryph_install --description "Run a Hypergryph installer exe into t
 end
 
 function labwc_endfield_daily --description "Launch Arknights Endfield daily build via labwc"
+    cd "$HOME/Games/.bin/Arknights Endfield"
     WLR_BACKENDS=headless labwc -S "env WINEPREFIX=\"$HOME/Games/arknights_endfield_daily\" PROTONPATH=\"$DW_PROTON_PATH\" umu-run \"$HOME/Games/.bin/Arknights Endfield/Endfield.exe\""
 end
 
@@ -114,6 +116,36 @@ function endfield_daily_stop --description "Stop Arknights Endfield daily build 
 end
 
 function cage_endfield_daily --description "Launch Arknights Endfield daily build via cage"
+    cd "$HOME/Games/.bin/Arknights Endfield"
     cage bash -- -c "env WINEPREFIX=\"$HOME/Games/arknights_endfield_daily\" PROTONPATH=\"$DW_PROTON_PATH\" umu-run \"$HOME/Games/.bin/Arknights Endfield/Endfield.exe\""
 end
+
+function naraka --description "Launch Naraka: Bladepoint via umu-run"
+    cd /home/risun/Games/.bin/Naraka
+    set -l proton_path $DW_PROTON_PATH
+    set -l game_exe "$HOME/Games/.bin/Naraka/LauncherGame.exe"
+
+    if not test -d $proton_path
+        echo "naraka: Proton not found at: $proton_path" >&2
+        return 1
+    end
+
+    if not test -f $game_exe
+        echo "naraka: Game executable not found at: $game_exe" >&2
+        return 1
+    end
+
+    mkdir -p "$HOME/Games/naraka"
+    systemd-inhibit --what=idle --who="naraka" --why="Game is running" \
+        env WINEPREFIX="$HOME/Games/naraka" \
+            PROTONPATH=$proton_path \
+            mangohud mangohud umu-run $game_exe
+end
+
+function naraka_stop --description "Stop Naraka: Bladepoint by killing its wineserver"
+    set -lx PROTONPATH $DW_PROTON_PATH
+    set -lx WINEPREFIX "$HOME/Games/naraka"
+    wineserver_kill
+end
+
 
