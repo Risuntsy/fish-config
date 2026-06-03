@@ -45,7 +45,7 @@ function wineserver_kill --description "Kill the wineserver for the current PROT
     env WINEPREFIX="$WINEPREFIX" $wineserver -k
 end
 
-function wuwa_stop --description "Stop Wuthering Waves by killing its wineserver"
+function wuwa_kill --description "Stop Wuthering Waves by killing its wineserver"
     set -lx PROTONPATH $DW_PROTON_PATH
     set -lx WINEPREFIX "$HOME/Games/wuwa"
     wineserver_kill
@@ -72,13 +72,13 @@ function hypergryph_launcher --description "Launch Arknights Endfield (Hypergryp
             umu-run $game_exe
 end
 
-function hypergryph_kill --description "Stop Arknights Endfield by killing its wineserver"
+function hypergryph_launcher_kill --description "Stop Arknights Endfield by killing its wineserver"
     set -lx PROTONPATH $DW_PROTON_PATH
     set -lx WINEPREFIX "$HOME/Games/arknights-endfield"
     wineserver_kill
 end
 
-function hypergryph_install --description "Run a Hypergryph installer exe into the arknights-endfield WINEPREFIX"
+function hypergryph_launcher_install --description "Run a Hypergryph installer exe into the arknights-endfield WINEPREFIX"
     if test (count $argv) -lt 1
         echo "hypergryph_install: usage: hypergryph_install <installer.exe>" >&2
         return 1
@@ -109,15 +109,10 @@ function labwc_endfield_daily --description "Launch Arknights Endfield daily bui
     WLR_BACKENDS=headless labwc -S "env WINEPREFIX=\"$HOME/Games/arknights_endfield_daily\" PROTONPATH=\"$DW_PROTON_PATH\" umu-run \"$HOME/Games/.bin/Arknights Endfield/Endfield.exe\""
 end
 
-function endfield_daily_stop --description "Stop Arknights Endfield daily build by killing its wineserver"
+function endfield_daily_kill --description "Stop Arknights Endfield daily build by killing its wineserver"
     set -lx PROTONPATH $DW_PROTON_PATH
     set -lx WINEPREFIX "$HOME/Games/arknights_endfield_daily"
     wineserver_kill
-end
-
-function cage_endfield_daily --description "Launch Arknights Endfield daily build via cage"
-    cd "$HOME/Games/.bin/Arknights Endfield"
-    cage bash -- -c "env WINEPREFIX=\"$HOME/Games/arknights_endfield_daily\" PROTONPATH=\"$DW_PROTON_PATH\" umu-run \"$HOME/Games/.bin/Arknights Endfield/Endfield.exe\""
 end
 
 function naraka --description "Launch Naraka: Bladepoint via umu-run"
@@ -142,10 +137,20 @@ function naraka --description "Launch Naraka: Bladepoint via umu-run"
             mangohud mangohud umu-run $game_exe
 end
 
-function naraka_stop --description "Stop Naraka: Bladepoint by killing its wineserver"
+function naraka_kill --description "Stop Naraka: Bladepoint by killing its wineserver"
     set -lx PROTONPATH $DW_PROTON_PATH
     set -lx WINEPREFIX "$HOME/Games/naraka"
     wineserver_kill
 end
 
+function labwc_wuwa_daily --description "Launch Wuthering Waves daily via labwc"
+    cd "$HOME/Games/.bin/wuwa"
+    # WLR_BACKENDS=headless 
+    labwc -S "env WINEPREFIX=\"$HOME/Games/wuwa_daily\" PROTONPATH=\"$DW_PROTON_PATH\" umu-run \"$HOME/Games/.bin/wuwa/Wuthering Waves.exe\""
+end
 
+function wuwa_daily_kill --description "Stop Wuthering Waves daily by killing its wineserver"
+    set -lx PROTONPATH $DW_PROTON_PATH
+    set -lx WINEPREFIX "$HOME/Games/wuwa_daily"
+    wineserver_kill
+end
