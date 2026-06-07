@@ -2,6 +2,43 @@
 
 set -g DW_PROTON_PATH "/home/risun/.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d/DW-Proton Latest"
 
+function _wuwa_symlink_saved --description "Symlink WuWa Config, DeviceSaved, and LocalStorage"
+    set -l saved_dir $argv[1]
+    set -l config_base $argv[2]
+
+    mkdir -p "$config_base/Config" "$config_base/DeviceSaved" "$config_base/LocalStorage"
+
+    for name in Config DeviceSaved LocalStorage
+        set -l target "$saved_dir/$name"
+        set -l source "$config_base/$name"
+
+        if test -L "$target"
+            rm -f "$target"
+        else if test -d "$target"
+            if test -d "$target.bak"
+                rm -rf "$target.bak"
+            end
+            mv "$target" "$target.bak"
+        end
+
+        ln -s "$source" "$target"
+    end
+end
+
+function _wuwa_restore_saved --description "Restore WuWa Config, DeviceSaved, and LocalStorage"
+    set -l saved_dir $argv[1]
+
+    for name in Config DeviceSaved LocalStorage
+        set -l target "$saved_dir/$name"
+        if test -L "$target"
+            rm -f "$target"
+        end
+        if test -d "$target.bak"
+            mv "$target.bak" "$target"
+        end
+    end
+end
+
 function wuwa --description "Launch Wuthering Waves via umu-run"
     cd "$HOME/Games/.bin/wuwa"
     set -l proton_path $DW_PROTON_PATH
@@ -17,11 +54,18 @@ function wuwa --description "Launch Wuthering Waves via umu-run"
         return 1
     end
 
+    set -l game_dir "$HOME/Games/.bin/wuwa"
+    set -l saved_dir "$game_dir/Client/Saved"
+    set -l config_base "$HOME/Games/.config/wuwa"
+
+    _wuwa_symlink_saved "$saved_dir" "$config_base"
+
     mkdir -p "$HOME/Games/wuwa"
     systemd-inhibit --what=idle --who="wuwa" --why="Game is running" \
         env WINEPREFIX="$HOME/Games/wuwa" \
             PROTONPATH=$proton_path \
             umu-run $game_exe
+    _wuwa_restore_saved "$saved_dir"
 end
 
 function wineserver_kill --description "Kill the wineserver for the current PROTONPATH/WINEPREFIX"
@@ -145,8 +189,16 @@ end
 
 function labwc_wuwa_daily --description "Launch Wuthering Waves daily via labwc"
     cd "$HOME/Games/.bin/wuwa"
+
+    set -l game_dir "$HOME/Games/.bin/wuwa"
+    set -l saved_dir "$game_dir/Client/Saved"
+    set -l config_base "$HOME/Games/.config/wuwa_daily"
+
+    _wuwa_symlink_saved "$saved_dir" "$config_base"
+
     # WLR_BACKENDS=headless 
     labwc -S "env WINEPREFIX=\"$HOME/Games/wuwa_daily\" PROTONPATH=\"$DW_PROTON_PATH\" umu-run \"$HOME/Games/.bin/wuwa/Wuthering Waves.exe\""
+    _wuwa_restore_saved "$saved_dir"
 end
 
 function wuwa_daily_kill --description "Stop Wuthering Waves daily by killing its wineserver"

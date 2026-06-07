@@ -198,3 +198,7 @@ end
 function code_config_antigravity_cli
     code_web ~/.gemini/antigravity-cli
 end
+
+function code_config_gemini
+    code_web ~/.gemini
+end
