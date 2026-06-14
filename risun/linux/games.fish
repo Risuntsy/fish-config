@@ -194,7 +194,7 @@ end
 
 function labwc_endfield_daily --description "Launch Arknights Endfield daily build via labwc"
     cd "$HOME/Games/.bin/Arknights Endfield"
-    WLR_BACKENDS=headless labwc -S "env WINEPREFIX=\"$HOME/Games/arknights_endfield_daily\" PROTONPATH=\"$DW_PROTON_PATH\" umu-run \"$HOME/Games/.bin/Arknights Endfield/Endfield.exe\""
+    WLR_BACKENDS=headless labwc -S "env WINEPREFIX=\"$HOME/Games/arknights_endfield_daily\" PROTONPATH=\"$DW_PROTON_PATH\" SDL_GAMECONTROLLER_IGNORE_DEVICES=0x045e/0x028e umu-run \"$HOME/Games/.bin/Arknights Endfield/Endfield.exe\""
 end
 
 function endfield_daily_kill --description "Stop Arknights Endfield daily build by killing its wineserver"
@@ -204,7 +204,7 @@ function endfield_daily_kill --description "Stop Arknights Endfield daily build 
 end
 
 function naraka --description "Launch Naraka: Bladepoint via umu-run"
-    cd /home/risun/Games/.bin/Naraka
+    cd "$HOME/Games/.bin/Naraka"
     set -l proton_path $DW_PROTON_PATH
     set -l game_exe "$HOME/Games/.bin/Naraka/LauncherGame.exe"
     set -l enable_mangohud 0
