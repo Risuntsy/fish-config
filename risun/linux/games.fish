@@ -43,6 +43,20 @@ function wuwa --description "Launch Wuthering Waves via umu-run"
     cd "$HOME/Games/.bin/wuwa"
     set -l proton_path $DW_PROTON_PATH
     set -l game_exe "$HOME/Games/.bin/wuwa/Wuthering Waves.exe"
+    set -l enable_mangohud 0
+    set -l enable_gamemode 1
+    set -l game_args
+
+    for arg in $argv
+        switch $arg
+            case --enable-mangohud
+                set enable_mangohud 1
+            case --disable-gamemode
+                set enable_gamemode 0
+            case '*'
+                set -a game_args $arg
+        end
+    end
 
     if not test -d $proton_path
         echo "wuwa: Proton not found at: $proton_path" >&2
@@ -60,11 +74,19 @@ function wuwa --description "Launch Wuthering Waves via umu-run"
 
     _wuwa_symlink_saved "$saved_dir" "$config_base"
 
+    set -l command umu-run $game_exe $game_args
+    if test $enable_mangohud -eq 1
+        set command mangohud $command
+    end
+    if test $enable_gamemode -eq 1
+        set command gamemoderun $command
+    end
+
     mkdir -p "$HOME/Games/wuwa"
     systemd-inhibit --what=idle --who="wuwa" --why="Game is running" \
         env WINEPREFIX="$HOME/Games/wuwa" \
             PROTONPATH=$proton_path \
-            umu-run $game_exe
+            $command
     _wuwa_restore_saved "$saved_dir"
 end
 
@@ -98,6 +120,20 @@ end
 function hypergryph_launcher --description "Launch Arknights Endfield (Hypergryph) via umu-run"
     set -l proton_path $DW_PROTON_PATH
     set -l game_exe "$HOME/Games/arknights-endfield/drive_c/Program Files/Hypergryph Launcher/Launcher.exe"
+    set -l enable_mangohud 0
+    set -l enable_gamemode 1
+    set -l game_args
+
+    for arg in $argv
+        switch $arg
+            case --enable-mangohud
+                set enable_mangohud 1
+            case --disable-gamemode
+                set enable_gamemode 0
+            case '*'
+                set -a game_args $arg
+        end
+    end
 
     if not test -d $proton_path
         echo "endfield: Proton not found at: $proton_path" >&2
@@ -109,11 +145,19 @@ function hypergryph_launcher --description "Launch Arknights Endfield (Hypergryp
         return 1
     end
 
+    set -l command umu-run $game_exe $game_args
+    if test $enable_mangohud -eq 1
+        set command mangohud $command
+    end
+    if test $enable_gamemode -eq 1
+        set command gamemoderun $command
+    end
+
     mkdir -p "$HOME/Games/arknights-endfield"
     systemd-inhibit --what=idle --who="hypergryph_launcher" --why="Game is running" \
         env WINEPREFIX="$HOME/Games/arknights-endfield" \
             PROTONPATH=$proton_path \
-            umu-run $game_exe
+            $command
 end
 
 function hypergryph_launcher_kill --description "Stop Arknights Endfield by killing its wineserver"
@@ -163,6 +207,20 @@ function naraka --description "Launch Naraka: Bladepoint via umu-run"
     cd /home/risun/Games/.bin/Naraka
     set -l proton_path $DW_PROTON_PATH
     set -l game_exe "$HOME/Games/.bin/Naraka/LauncherGame.exe"
+    set -l enable_mangohud 0
+    set -l enable_gamemode 1
+    set -l game_args
+
+    for arg in $argv
+        switch $arg
+            case --enable-mangohud
+                set enable_mangohud 1
+            case --disable-gamemode
+                set enable_gamemode 0
+            case '*'
+                set -a game_args $arg
+        end
+    end
 
     if not test -d $proton_path
         echo "naraka: Proton not found at: $proton_path" >&2
@@ -174,11 +232,19 @@ function naraka --description "Launch Naraka: Bladepoint via umu-run"
         return 1
     end
 
+    set -l command umu-run $game_exe $game_args
+    if test $enable_mangohud -eq 1
+        set command mangohud $command
+    end
+    if test $enable_gamemode -eq 1
+        set command gamemoderun $command
+    end
+
     mkdir -p "$HOME/Games/naraka"
     systemd-inhibit --what=idle --who="naraka" --why="Game is running" \
         env WINEPREFIX="$HOME/Games/naraka" \
             PROTONPATH=$proton_path \
-            mangohud mangohud umu-run $game_exe
+            $command
 end
 
 function naraka_kill --description "Stop Naraka: Bladepoint by killing its wineserver"
