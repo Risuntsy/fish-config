@@ -193,8 +193,20 @@ function hypergryph_launcher_install --description "Run a Hypergryph installer e
 end
 
 function labwc_endfield_daily --description "Launch Arknights Endfield daily build via labwc"
+    set -l labwc_command labwc
+
+    for arg in $argv
+        switch $arg
+            case --headless
+                set labwc_command env WLR_BACKENDS=headless labwc
+            case '*'
+                echo "labwc_endfield_daily: unknown argument: $arg" >&2
+                return 1
+        end
+    end
+
     cd "$HOME/Games/.bin/Arknights Endfield"
-    WLR_BACKENDS=headless labwc -S "env WINEPREFIX=\"$HOME/Games/arknights_endfield_daily\" PROTONPATH=\"$DW_PROTON_PATH\" SDL_GAMECONTROLLER_IGNORE_DEVICES=0x045e/0x028e umu-run \"$HOME/Games/.bin/Arknights Endfield/Endfield.exe\""
+    $labwc_command -S "env WINEPREFIX=\"$HOME/Games/arknights_endfield_daily\" PROTONPATH=\"$DW_PROTON_PATH\" SDL_GAMECONTROLLER_IGNORE_DEVICES=0x045e/0x028e umu-run \"$HOME/Games/.bin/Arknights Endfield/Endfield.exe\""
 end
 
 function endfield_daily_kill --description "Stop Arknights Endfield daily build by killing its wineserver"
@@ -254,16 +266,26 @@ function naraka_kill --description "Stop Naraka: Bladepoint by killing its wines
 end
 
 function labwc_wuwa_daily --description "Launch Wuthering Waves daily via labwc"
-    cd "$HOME/Games/.bin/wuwa"
+    set -l labwc_command labwc
 
+    for arg in $argv
+        switch $arg
+            case --headless
+                set labwc_command env WLR_BACKENDS=headless labwc
+            case '*'
+                echo "labwc_wuwa_daily: unknown argument: $arg" >&2
+                return 1
+        end
+    end
+
+    cd "$HOME/Games/.bin/wuwa"
     set -l game_dir "$HOME/Games/.bin/wuwa"
     set -l saved_dir "$game_dir/Client/Saved"
     set -l config_base "$HOME/Games/.config/wuwa_daily"
 
     _wuwa_symlink_saved "$saved_dir" "$config_base"
 
-    # WLR_BACKENDS=headless 
-    labwc -S "env WINEPREFIX=\"$HOME/Games/wuwa_daily\" PROTONPATH=\"$DW_PROTON_PATH\" umu-run \"$HOME/Games/.bin/wuwa/Wuthering Waves.exe\""
+    $labwc_command -S "env WINEPREFIX=\"$HOME/Games/wuwa_daily\" PROTONPATH=\"$DW_PROTON_PATH\" umu-run \"$HOME/Games/.bin/wuwa/Wuthering Waves.exe\""
     _wuwa_restore_saved "$saved_dir"
 end
 
