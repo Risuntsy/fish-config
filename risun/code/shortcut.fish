@@ -111,6 +111,14 @@ function zed_config_sing_box
     zed ~/Note/config/sing-box
 end
 
+function code_config_xray
+    code_web ~/Note/config/xray
+end
+
+function zed_config_xray
+    zed ~/Note/config/xray
+end
+
 if _is_linux
     function code_config_container
         code_common ~/.config/containers
