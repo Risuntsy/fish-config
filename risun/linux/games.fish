@@ -46,7 +46,7 @@ function wuwa --description "Launch Wuthering Waves via umu-run"
     set -l enable_mangohud 0
     set -l enable_gamemode 1
     set -l enable_wayland 1
-    set -l enable_dx11 1
+    set -l enable_dx11 0
     set -l game_args
 
     for arg in $argv
@@ -57,8 +57,8 @@ function wuwa --description "Launch Wuthering Waves via umu-run"
                 set enable_gamemode 0
             case --disable-wayland
                 set enable_wayland 0
-            case --disable-dx11
-                set enable_dx11 0
+            case --enable-dx11
+                set enable_dx11 1
             case '*'
                 set -a game_args $arg
         end
@@ -308,13 +308,52 @@ function hypergryph_launcher_install --description "Run a Hypergryph installer e
     echo "hypergryph_launcher_install: installed Hypergryph Launcher $installed_version to: $install_dir"
 end
 
+function _labwc_daily_game_command --description "Build a shell-safe daily game command"
+    set -l prefix $argv[1]
+    set -l game_exe $argv[2]
+    set -l game_args $argv[3..-1]
+
+    string join -- ' ' (string escape -- \
+        env \
+        WINEPREFIX="$prefix" \
+        PROTONPATH="$DW_PROTON_PATH" \
+        PROTON_ENABLE_WAYLAND=0 \
+        SDL_GAMECONTROLLER_IGNORE_DEVICES=0x045e/0x028e \
+        umu-run "$game_exe" $game_args)
+end
+
+function _labwc_daily_session --description "Run a daily game in a labwc session"
+    set -l headless $argv[1]
+    set -l enable_wayvnc $argv[2]
+    set -l game_command $argv[3]
+    set -l session_argv "$HOME/.config/fish/risun/linux/labwc-daily-session.sh"
+    set -l backend wayland
+
+    if test $headless -eq 1
+        set backend headless
+        if test $enable_wayvnc -eq 0
+            set -a session_argv --disable-wayvnc
+        end
+    else
+        set -a session_argv --auto-output --disable-wayvnc
+    end
+
+    set -l session_command (string join -- ' ' (string escape -- $session_argv) $game_command)
+    env WLR_BACKENDS=$backend labwc --session "$session_command"
+end
+
 function labwc_endfield_daily --description "Launch Arknights Endfield daily build via labwc"
     set -l headless 0
+    set -l enable_wayvnc 1
 
     for arg in $argv
         switch $arg
             case --headless
                 set headless 1
+            case --enable-wayvnc
+                set enable_wayvnc 1
+            case --disable-wayvnc
+                set enable_wayvnc 0
             case '*'
                 echo "labwc_endfield_daily: unknown argument: $arg" >&2
                 return 1
@@ -322,13 +361,10 @@ function labwc_endfield_daily --description "Launch Arknights Endfield daily bui
     end
 
     cd "$HOME/Games/.bin/Arknights Endfield"
-    set -l game_command "env WINEPREFIX=\"$HOME/Games/arknights_endfield_daily\" PROTONPATH=\"$DW_PROTON_PATH\" PROTON_ENABLE_WAYLAND=0 SDL_GAMECONTROLLER_IGNORE_DEVICES=0x045e/0x028e umu-run \"$HOME/Games/.bin/Arknights Endfield/Endfield.exe\""
-
-    if test $headless -eq 1
-        env WLR_BACKENDS=headless labwc --session "$game_command"
-    else
-        env WLR_BACKENDS=wayland labwc --session "sh -c 'set -- \$(wlr-randr); output=\$1; test -n \"\$output\" || exit 1; wlr-randr --output \"\$output\" --custom-mode 1920x1080 || exit 1; exec $game_command'"
-    end
+    set -l game_command (_labwc_daily_game_command \
+        "$HOME/Games/arknights_endfield_daily" \
+        "$HOME/Games/.bin/Arknights Endfield/Endfield.exe")
+    _labwc_daily_session $headless $enable_wayvnc "$game_command"
 end
 
 function endfield_daily_kill --description "Stop Arknights Endfield daily build by killing its wineserver"
@@ -397,11 +433,19 @@ end
 
 function labwc_wuwa_daily --description "Launch Wuthering Waves daily via labwc"
     set -l headless 0
+    set -l enable_dx11 0
+    set -l enable_wayvnc 1
 
     for arg in $argv
         switch $arg
             case --headless
                 set headless 1
+            case --enable-dx11
+                set enable_dx11 1
+            case --enable-wayvnc
+                set enable_wayvnc 1
+            case --disable-wayvnc
+                set enable_wayvnc 0
             case '*'
                 echo "labwc_wuwa_daily: unknown argument: $arg" >&2
                 return 1
@@ -415,13 +459,15 @@ function labwc_wuwa_daily --description "Launch Wuthering Waves daily via labwc"
 
     _wuwa_symlink_saved "$saved_dir" "$config_base"
 
-    set -l game_command "env WINEPREFIX=\"$HOME/Games/wuwa_daily\" PROTONPATH=\"$DW_PROTON_PATH\" PROTON_ENABLE_WAYLAND=0 SDL_GAMECONTROLLER_IGNORE_DEVICES=0x045e/0x028e umu-run \"$HOME/Games/.bin/wuwa/Wuthering Waves.exe\""
-
-    if test $headless -eq 1
-        env WLR_BACKENDS=headless labwc --session "$game_command"
-    else
-        env WLR_BACKENDS=wayland labwc --session "sh -c 'set -- \$(wlr-randr); output=\$1; test -n \"\$output\" || exit 1; wlr-randr --output \"\$output\" --custom-mode 1920x1080 || exit 1; exec $game_command'"
+    set -l game_args
+    if test $enable_dx11 -eq 1
+        set -a game_args -dx11
     end
+    set -l game_command (_labwc_daily_game_command \
+        "$HOME/Games/wuwa_daily" \
+        "$HOME/Games/.bin/wuwa/Wuthering Waves.exe" \
+        $game_args)
+    _labwc_daily_session $headless $enable_wayvnc "$game_command"
     _wuwa_restore_saved "$saved_dir"
 end
 
