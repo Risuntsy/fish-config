@@ -40,3 +40,10 @@ function git_rebase_push
         git stash pop; or return $status
     end
 end
+
+
+function git_push_now
+    git add -A
+    git commit -m (date "+%Y-%m-%d %H:%M:%S")
+    git push
+end
