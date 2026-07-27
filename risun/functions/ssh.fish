@@ -23,12 +23,37 @@ end
         # Transfer function (Rsync or SCP)
         eval "
 function scp_$name
+    set -l method auto
+    if contains -- \$argv[1] rsync scp
+        set method \$argv[1]
+        set -e argv[1]
+    end
+
+    if test (count \$argv) -ne 2
+        echo \"Usage: scp_$name [rsync|scp] <src> <dst>\" >&2
+        return 2
+    end
+
     set -l src \$argv[1]
     set -l dst \$argv[2]
-    if command -v rsync >/dev/null
-        rsync -avz \$src $address:\$dst
+
+    set -l use_rsync false
+    if test \$method = rsync
+        if not command -q rsync
+            echo \"rsync is not installed locally\" >&2
+            return 127
+        end
+        set use_rsync true
+    else if test \$method = auto
+        if command -q rsync; and ssh $address 'command -v rsync >/dev/null 2>&1'
+            set use_rsync true
+        end
+    end
+
+    if test \$use_rsync = true
+        rsync -avz \"\$src\" \"$address:\$dst\"
     else
-        scp -r \$src $address:\$dst
+        scp -r \"\$src\" \"$address:\$dst\"
     end
 end
 "
