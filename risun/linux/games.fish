@@ -46,7 +46,7 @@ function wuwa --description "Launch Wuthering Waves via umu-run"
     set -l enable_mangohud 0
     set -l enable_gamemode 1
     set -l enable_wayland 1
-    set -l enable_dx11 0
+    set -l enable_dx11 1
     set -l game_args
 
     for arg in $argv
