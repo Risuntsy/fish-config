@@ -6,3 +6,4 @@ secret.fish
 /risun/work
 .DS_Store
 project.fish
+/completions/bun.fish
