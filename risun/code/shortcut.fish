@@ -215,3 +215,7 @@ function code_config_mangohud
     mkdir -p ~/.config/MangoHud
     code_web ~/.config/MangoHud
 end
+
+function code_config_codex
+    code_web ~/.codex
+end
