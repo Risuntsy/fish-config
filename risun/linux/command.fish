@@ -15,6 +15,7 @@ function update_system --description "Update the system packages"
 
     if command -q flatpak
         flatpak update
+        flatpak uninstall --unused
     end
 
     if _is_macos

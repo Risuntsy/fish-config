@@ -19,3 +19,7 @@ end
 if test -d $HOME/.local/share/flutter/bin
     fish_add_path -U -p $HOME/.local/share/flutter/bin
 end
+
+if test -d $HOME/.opencode/bin
+    fish_add_path -U -p $HOME/.opencode/bin
+end

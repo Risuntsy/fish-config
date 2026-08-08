@@ -103,20 +103,12 @@ function zed_config_systemd
 end
 
 
-function code_config_sing_box
-    code_web ~/Note/config/sing-box
+function code_config_proxy
+    code_web ~/Note/config/proxy
 end
 
-function zed_config_sing_box
-    zed ~/Note/config/sing-box
-end
-
-function code_config_xray
-    code_web ~/Note/config/xray
-end
-
-function zed_config_xray
-    zed ~/Note/config/xray
+function zed_config_proxy
+    zed ~/Note/config/proxy
 end
 
 if _is_linux
@@ -199,7 +191,7 @@ function zed_config_fcitx
 end
 
 function code_config_opencode
-    code_web ~/.config/opencode 
+    code_web ~/.config/opencode
 end
 
 
