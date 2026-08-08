@@ -1,27 +1,27 @@
 function update_system --description "Update the system packages"
     if _is_archlinux
         if command -q yay
-            yay -Syu
+            yay -Syu; or return
         else if command -q paru
-            paru -Syu
+            paru -Syu; or return
         else
-            sudo pacman -Syu
+            sudo pacman -Syu; or return
         end
     end
 
     if _is_fedora
-        sudo dnf update --refresh
+        sudo dnf update --refresh; or return
     end
 
     if command -q flatpak
-        flatpak update
-        flatpak uninstall --unused
+        flatpak update; or return
+        flatpak uninstall --unused; or return
     end
 
     if _is_macos
         if command -q brew
-            brew update
-            brew upgrade
+            brew update; or return
+            brew upgrade; or return
         end
     end
 end

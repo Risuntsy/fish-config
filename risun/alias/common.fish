@@ -25,7 +25,7 @@ end
 
 function mpv
     if command --query mpv
-        command mpv $argv --really-quiet --no-terminal
+        command mpv $argv --really-quiet --no-terminal --hwdec=auto
     else
         echo "mpv not found, do nothing"
         return 1
@@ -35,7 +35,7 @@ end
 
 function mpv_top
     if command --query mpv
-        command mpv $argv --really-quiet --no-terminal --ontop
+        command mpv $argv --really-quiet --no-terminal --ontop --hwdec=auto
     else
         echo "mpv not found, do nothing"
         return 1

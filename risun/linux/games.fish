@@ -189,58 +189,6 @@ function hypergryph_launcher_kill --description "Stop Arknights Endfield by kill
     wineserver_kill
 end
 
-function endfield --description "Launch Arknights Endfield directly via umu-run"
-    set -l proton_path $DW_PROTON_PATH
-    set -l prefix "$HOME/Games/arknights-endfield"
-    set -l game_dir "$HOME/Games/.bin/Arknights Endfield"
-    set -l game_exe "$game_dir/Endfield.exe"
-    set -l enable_mangohud 0
-    set -l enable_gamemode 1
-    set -l wayland_env PROTON_ENABLE_WAYLAND=1
-    set -l game_args
-
-    for arg in $argv
-        switch $arg
-            case --enable-mangohud
-                set enable_mangohud 1
-            case --disable-gamemode
-                set enable_gamemode 0
-            case --enable-wayland
-                set wayland_env PROTON_ENABLE_WAYLAND=1
-            case --disable-wayland
-                set wayland_env PROTON_ENABLE_WAYLAND=0
-            case '*'
-                set -a game_args $arg
-        end
-    end
-
-    if not test -d $proton_path
-        echo "endfield: Proton not found at: $proton_path" >&2
-        return 1
-    end
-
-    if not test -f "$game_exe"
-        echo "endfield: Game executable not found at: $game_exe" >&2
-        return 1
-    end
-
-    cd "$game_dir"
-
-    set -l command umu-run $game_exe $game_args
-    if test $enable_mangohud -eq 1
-        set command mangohud $command
-    end
-    if test $enable_gamemode -eq 1
-        set command gamemoderun $command
-    end
-
-    mkdir -p "$prefix"
-    systemd-inhibit --what=idle --who="endfield" --why="Game is running" \
-        env WINEPREFIX="$prefix" \
-        PROTONPATH=$proton_path \
-        $wayland_env \
-        $command
-end
 
 function hypergryph_launcher_install --description "Run a Hypergryph installer exe into the arknights-endfield WINEPREFIX"
     if test (count $argv) -lt 1
