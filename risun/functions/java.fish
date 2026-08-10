@@ -1,3 +1,8 @@
+if test -f /etc/fedora-release; and not set -q JAVA_HOME; and test -x /usr/bin/java
+    set -l java_path (readlink -f /usr/bin/java)
+    set -gx JAVA_HOME (dirname (dirname "$java_path"))
+end
+
 function jdk_chmod_all
     set jdk_dir ~/Library/Java/JavaVirtualMachines
     if not test -d $jdk_dir
