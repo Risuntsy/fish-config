@@ -24,7 +24,15 @@ end
 
 
 function _is_archlinux
-    if test -f /etc/os-release; and grep -q "Arch Linux" /etc/os-release
+    if test -f /etc/os-release; and grep -qE "Arch Linux|CachyOS" /etc/os-release
+        return 0
+    else
+        return 1
+    end
+end
+
+function _is_cachyos
+    if test -f /etc/os-release; and grep -q "CachyOS" /etc/os-release
         return 0
     else
         return 1

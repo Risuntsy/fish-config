@@ -94,6 +94,16 @@ function zed_config_fedora
     zed ~/Note/memo/os/linux/distro/fedora
 end
 
+
+function code_config_cachyos
+    code_common ~/Note/memo/os/linux/distro/cachyos
+end
+
+function zed_config_cachyos
+    zed ~/Note/memo/os/linux/distro/cachyos
+end
+
+
 function code_config_systemd
     code_common ~/.config/systemd/user
 end

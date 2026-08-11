@@ -7,3 +7,4 @@ secret.fish
 .DS_Store
 project.fish
 /completions/bun.fish
+completions/copilot.fish

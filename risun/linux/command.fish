@@ -1,5 +1,5 @@
 function update_system --description "Update the system packages"
-    if _is_archlinux
+    if _is_archlinux; or _is_cachyos
         if command -q yay
             yay -Syu; or return
         else if command -q paru
