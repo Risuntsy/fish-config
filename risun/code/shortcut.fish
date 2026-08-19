@@ -221,3 +221,12 @@ end
 function code_config_codex
     code_web ~/.codex
 end
+
+function code_config_claude
+    code_web ~/.claude
+end
+
+function code_config_pi
+    mkdir -p ~/.pi/agent
+    code_web ~/.pi/agent
+end
