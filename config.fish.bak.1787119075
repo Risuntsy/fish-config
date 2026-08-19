@@ -1,3 +1,0 @@
-if test -f "$HOME/.config/fish/risun/import.fish"
-    source "$HOME/.config/fish/risun/import.fish"
-end

@@ -8,3 +8,5 @@ secret.fish
 project.fish
 /completions/bun.fish
 completions/copilot.fish
+completions/grok.fish
+config.fish.bak.*
