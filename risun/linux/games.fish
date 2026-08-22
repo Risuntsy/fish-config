@@ -5,9 +5,9 @@ set -g DW_PROTON_PATH "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/compati
 set -g _GAME_LABWC_SESSION "$HOME/.config/fish/risun/linux/labwc-daily-session.sh"
 
 # Every launcher is a thin wrapper around _game_run. Each toggle has exactly one
-# flag, the opposite of its default: wayland, gamemode, mangohud and labwc are
-# off unless enabled, wayvnc is on unless disabled. Anything _game_run does not
-# recognize is forwarded to the game executable.
+# flag, the opposite of its default: wayland, mangohud and labwc are off unless
+# enabled, gamemode and wayvnc are on unless disabled. Anything _game_run does
+# not recognize is forwarded to the game executable.
 function _game_run --description "Launch a Proton game via umu-run, directly or inside a labwc session"
     argparse --ignore-unknown \
         'name=' \
@@ -17,7 +17,7 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
         'gameid=' \
         'cwd=' \
         'enable-wayland' \
-        'enable-gamemode' \
+        'disable-gamemode' \
         'enable-mangohud' \
         'labwc' \
         'headless' \
@@ -61,7 +61,12 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
         $_flag_exe \
         $game_args
     set -q _flag_enable_mangohud; and set command mangohud $command
-    set -q _flag_enable_gamemode; and set command gamemoderun $command
+
+    # gamemode is on by default, but labwc mode already runs the game inside a
+    # dedicated session, so leave the host governor alone there.
+    if not set -q _flag_disable_gamemode; and not set -q _flag_labwc
+        set command gamemoderun $command
+    end
 
     mkdir -p $_flag_prefix
 
@@ -153,6 +158,9 @@ function _wuwa_symlink_saved --description "Symlink WuWa Config, DeviceSaved, an
     set -l saved_dir $_flag_saved_dir
     set -l config_base $_flag_config_base
 
+    # The game recreates Saved/ from scratch after an update, so it may not
+    # exist yet on the first launch afterwards.
+    mkdir -p "$saved_dir"
     mkdir -p "$config_base/Config" "$config_base/DeviceSaved" "$config_base/LocalStorage"
 
     for name in Config DeviceSaved LocalStorage
@@ -168,7 +176,12 @@ function _wuwa_symlink_saved --description "Symlink WuWa Config, DeviceSaved, an
             mv "$target" "$target.bak"
         end
 
-        ln -s "$source" "$target"
+        # Launching with the link missing would write saves into the game
+        # directory instead of the config base, so bail out loudly.
+        if not ln -s "$source" "$target"
+            echo "wuwa: failed to link $target -> $source" >&2
+            return 1
+        end
     end
 end
 
@@ -198,6 +211,7 @@ function _wuwa_run --description "Launch Wuthering Waves with a swapped save dir
     set -l saved_dir "$HOME/Games/.bin/wuwa/Client/Saved"
 
     _wuwa_symlink_saved --saved-dir "$saved_dir" --config-base "$_flag_config_base"
+    or return 1
 
     _game_run \
         --name wuwa \
@@ -212,13 +226,13 @@ end
 
 function wuwa --description "Launch Wuthering Waves via umu-run"
     argparse --ignore-unknown \
-        'disable-dx11' \
+        'enable-dx11' \
         -- $argv
     or return 1
 
-    # dx11 is on by default here
-    set -l dx11_args -dx11
-    set -q _flag_disable_dx11; and set dx11_args
+    # dx11 is off by default here
+    set -l dx11_args
+    set -q _flag_enable_dx11; and set dx11_args -dx11
 
     _wuwa_run --config-base "$HOME/Games/.config/wuwa" \
         --prefix "$HOME/Games/wuwa" \
