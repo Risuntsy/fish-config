@@ -2,108 +2,116 @@
 
 set -g DW_PROTON_PATH "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d/DW-Proton Latest"
 
-function _wuwa_symlink_saved --description "Symlink WuWa Config, DeviceSaved, and LocalStorage"
-    set -l saved_dir $argv[1]
-    set -l config_base $argv[2]
+set -g _GAME_LABWC_SESSION "$HOME/.config/fish/risun/linux/labwc-daily-session.sh"
 
-    mkdir -p "$config_base/Config" "$config_base/DeviceSaved" "$config_base/LocalStorage"
+# Every launcher is a thin wrapper around _game_run. Each toggle has exactly one
+# flag, the opposite of its default: wayland, gamemode, mangohud and labwc are
+# off unless enabled, wayvnc is on unless disabled. Anything _game_run does not
+# recognize is forwarded to the game executable.
+function _game_run --description "Launch a Proton game via umu-run, directly or inside a labwc session"
+    argparse --ignore-unknown \
+        'name=' \
+        'exe=' \
+        'prefix=' \
+        'proton=' \
+        'gameid=' \
+        'cwd=' \
+        'enable-wayland' \
+        'enable-gamemode' \
+        'enable-mangohud' \
+        'labwc' \
+        'headless' \
+        'disable-wayvnc' \
+        -- $argv
+    or return 1
 
-    for name in Config DeviceSaved LocalStorage
-        set -l target "$saved_dir/$name"
-        set -l source "$config_base/$name"
+    set -l game_args $argv
 
-        if test -L "$target"
-            rm -f "$target"
-        else if test -d "$target"
-            if test -d "$target.bak"
-                rm -rf "$target.bak"
-            end
-            mv "$target" "$target.bak"
-        end
+    set -l proton $DW_PROTON_PATH
+    test -n "$_flag_proton"; and set proton $_flag_proton
 
-        ln -s "$source" "$target"
-    end
-end
+    set -l name (basename $_flag_prefix)
+    test -n "$_flag_name"; and set name $_flag_name
 
-function _wuwa_restore_saved --description "Restore WuWa Config, DeviceSaved, and LocalStorage"
-    set -l saved_dir $argv[1]
+    set -l wayland 0
+    set -q _flag_enable_wayland; and set wayland 1
 
-    for name in Config DeviceSaved LocalStorage
-        set -l target "$saved_dir/$name"
-        if test -L "$target"
-            rm -f "$target"
-        end
-        if test -d "$target.bak"
-            mv "$target.bak" "$target"
-        end
-    end
-end
-
-function wuwa --description "Launch Wuthering Waves via umu-run"
-    cd "$HOME/Games/.bin/wuwa"
-    set -l proton_path $DW_PROTON_PATH
-    set -l game_exe "$HOME/Games/.bin/wuwa/Wuthering Waves.exe"
-    set -l enable_mangohud 0
-    set -l enable_gamemode 1
-    set -l enable_wayland 1
-    set -l enable_dx11 1
-    set -l game_args
-
-    for arg in $argv
-        switch $arg
-            case --enable-mangohud
-                set enable_mangohud 1
-            case --disable-gamemode
-                set enable_gamemode 0
-            case --disable-wayland
-                set enable_wayland 0
-            case --enable-dx11
-                set enable_dx11 1
-            case '*'
-                set -a game_args $arg
-        end
-    end
-
-    if not test -d $proton_path
-        echo "wuwa: Proton not found at: $proton_path" >&2
+    if not test -d $proton
+        echo "$name: Proton not found at: $proton" >&2
         return 1
     end
 
-    if not test -f "$game_exe"
-        echo "wuwa: Game executable not found at: $game_exe" >&2
+    if not test -f $_flag_exe
+        echo "$name: game executable not found at: $_flag_exe" >&2
         return 1
     end
 
-    set -l game_dir "$HOME/Games/.bin/wuwa"
-    set -l saved_dir "$game_dir/Client/Saved"
-    set -l config_base "$HOME/Games/.config/wuwa"
-
-    _wuwa_symlink_saved "$saved_dir" "$config_base"
-
-    if test $enable_dx11 -eq 1
-        set -a game_args -dx11
+    if test -n "$_flag_cwd"; and not test -d $_flag_cwd
+        echo "$name: game directory not found at: $_flag_cwd" >&2
+        return 1
     end
 
-    set -l command umu-run "$game_exe" $game_args
-    if test $enable_mangohud -eq 1
-        set command mangohud $command
-    end
-    if test $enable_gamemode -eq 1
-        set command gamemoderun $command
+    set -l env_vars \
+        WINEPREFIX=$_flag_prefix \
+        PROTONPATH=$proton
+    test -n "$_flag_gameid"; and set -a env_vars GAMEID=$_flag_gameid
+
+    set -l command \
+        umu-run \
+        $_flag_exe \
+        $game_args
+    set -q _flag_enable_mangohud; and set command mangohud $command
+    set -q _flag_enable_gamemode; and set command gamemoderun $command
+
+    mkdir -p $_flag_prefix
+
+    # Some games only run from their own directory. Restore the caller's cwd
+    # afterwards so the launcher never leaves the shell somewhere else.
+    set -l prev_cwd $PWD
+    test -n "$_flag_cwd"; and cd $_flag_cwd
+
+    if not set -q _flag_labwc
+        set -a env_vars PROTON_ENABLE_WAYLAND=$wayland
+        systemd-inhibit \
+            --what=idle \
+            --who=$name \
+            --why="Game is running" \
+            env \
+            $env_vars \
+            $command
+        set -l game_status $status
+        cd $prev_cwd
+        return $game_status
     end
 
-    mkdir -p "$HOME/Games/wuwa"
-    set -l wayland_env PROTON_ENABLE_WAYLAND=0
-    if test $enable_wayland -eq 1
-        set wayland_env PROTON_ENABLE_WAYLAND=1
+    # labwc mode: the game runs inside a nested compositor, so Proton's own
+    # Wayland backend stays off regardless of --enable-wayland.
+    set -a env_vars PROTON_ENABLE_WAYLAND=0
+    set -a env_vars SDL_GAMECONTROLLER_IGNORE_DEVICES=0x045e/0x028e
+
+    set -l session_argv $_GAME_LABWC_SESSION
+    set -l backend wayland
+    if set -q _flag_headless
+        set backend headless
+        set -q _flag_disable_wayvnc; and set -a session_argv --disable-wayvnc
+    else
+        set -a session_argv \
+            --auto-output \
+            --disable-wayvnc
     end
 
-    systemd-inhibit --what=idle --who="wuwa" --why="Game is running" \
-        env WINEPREFIX="$HOME/Games/wuwa" \
-        PROTONPATH=$proton_path \
-        $wayland_env \
-        $command
-    _wuwa_restore_saved "$saved_dir"
+    set -l session_command (string join -- ' ' (string escape -- \
+        $session_argv \
+        env \
+        $env_vars \
+        $command))
+
+    env WLR_BACKENDS=$backend \
+        labwc \
+        --session "$session_command"
+    set -l game_status $status
+    cd $prev_cwd
+    return $game_status
 end
 
 function wineserver_kill --description "Kill the wineserver for the current PROTONPATH/WINEPREFIX"
@@ -127,76 +135,191 @@ function wineserver_kill --description "Kill the wineserver for the current PROT
     env WINEPREFIX="$WINEPREFIX" $wineserver -k
 end
 
-function wuwa_kill --description "Stop Wuthering Waves by killing its wineserver"
+function _game_kill --description "Kill the wineserver for a game prefix"
+    argparse 'prefix=' -- $argv
+    or return 1
+
     set -lx PROTONPATH $DW_PROTON_PATH
-    set -lx WINEPREFIX "$HOME/Games/wuwa"
+    set -lx WINEPREFIX $_flag_prefix
     wineserver_kill
+end
+
+# --- Wuthering Waves ---------------------------------------------------------
+
+function _wuwa_symlink_saved --description "Symlink WuWa Config, DeviceSaved, and LocalStorage"
+    argparse 'saved-dir=' 'config-base=' -- $argv
+    or return 1
+
+    set -l saved_dir $_flag_saved_dir
+    set -l config_base $_flag_config_base
+
+    mkdir -p "$config_base/Config" "$config_base/DeviceSaved" "$config_base/LocalStorage"
+
+    for name in Config DeviceSaved LocalStorage
+        set -l target "$saved_dir/$name"
+        set -l source "$config_base/$name"
+
+        if test -L "$target"
+            rm -f "$target"
+        else if test -d "$target"
+            if test -d "$target.bak"
+                rm -rf "$target.bak"
+            end
+            mv "$target" "$target.bak"
+        end
+
+        ln -s "$source" "$target"
+    end
+end
+
+function _wuwa_restore_saved --description "Restore WuWa Config, DeviceSaved, and LocalStorage"
+    argparse 'saved-dir=' -- $argv
+    or return 1
+
+    set -l saved_dir $_flag_saved_dir
+
+    for name in Config DeviceSaved LocalStorage
+        set -l target "$saved_dir/$name"
+        if test -L "$target"
+            rm -f "$target"
+        end
+        if test -d "$target.bak"
+            mv "$target.bak" "$target"
+        end
+    end
+end
+
+# Runs WuWa with its save directories redirected at --config-base, restoring
+# them once the game exits. Remaining arguments are forwarded to _game_run.
+function _wuwa_run --description "Launch Wuthering Waves with a swapped save directory"
+    argparse --ignore-unknown 'config-base=' -- $argv
+    or return 1
+
+    set -l saved_dir "$HOME/Games/.bin/wuwa/Client/Saved"
+
+    _wuwa_symlink_saved --saved-dir "$saved_dir" --config-base "$_flag_config_base"
+
+    _game_run \
+        --name wuwa \
+        --exe "$HOME/Games/.bin/wuwa/Wuthering Waves.exe" \
+        --cwd "$HOME/Games/.bin/wuwa" \
+        $argv
+    set -l game_status $status
+
+    _wuwa_restore_saved --saved-dir "$saved_dir"
+    return $game_status
+end
+
+function wuwa --description "Launch Wuthering Waves via umu-run"
+    argparse --ignore-unknown \
+        'disable-dx11' \
+        -- $argv
+    or return 1
+
+    # dx11 is on by default here
+    set -l dx11_args -dx11
+    set -q _flag_disable_dx11; and set dx11_args
+
+    _wuwa_run --config-base "$HOME/Games/.config/wuwa" \
+        --prefix "$HOME/Games/wuwa" \
+        $argv \
+        $dx11_args
+end
+
+function wuwa_daily --description "Launch Wuthering Waves daily inside a labwc session"
+    argparse --ignore-unknown \
+        'enable-dx11' \
+        -- $argv
+    or return 1
+
+    # dx11 is off by default here
+    set -l dx11_args
+    set -q _flag_enable_dx11; and set dx11_args -dx11
+
+    _wuwa_run --config-base "$HOME/Games/.config/wuwa_daily" \
+        --prefix "$HOME/Games/wuwa_daily" \
+        --labwc \
+        $argv \
+        $dx11_args
+end
+
+function wuwa_kill --description "Stop Wuthering Waves by killing its wineserver"
+    _game_kill --prefix "$HOME/Games/wuwa"
+end
+
+function wuwa_daily_kill --description "Stop Wuthering Waves daily by killing its wineserver"
+    _game_kill --prefix "$HOME/Games/wuwa_daily"
+end
+
+# --- Arknights: Endfield -----------------------------------------------------
+
+function endfield --description "Launch Arknights Endfield via umu-run"
+    set -l game_dir "$HOME/Games/arknights-endfield/drive_c/Program Files/Hypergryph Launcher/games/Arknights Endfield"
+    _game_run \
+        --name endfield \
+        --exe "$game_dir/Endfield.exe" \
+        --prefix "$HOME/Games/arknights-endfield" \
+        --gameid umu-arknights-endfield \
+        --cwd "$game_dir" \
+        $argv
+end
+
+function arknights --description "Launch Arknights via umu-run"
+    set -l game_dir "$HOME/Games/arknights-endfield/drive_c/Program Files/Hypergryph Launcher/games/Arknights"
+    _game_run \
+        --name arknights \
+        --exe "$game_dir/Arknights.exe" \
+        --prefix "$HOME/Games/arknights-endfield" \
+        --gameid umu-arknights \
+        --cwd "$game_dir" \
+        $argv
+end
+
+function arknights_kill --description "Stop Arknights by killing its wineserver"
+    _game_kill --prefix "$HOME/Games/arknights-endfield"
 end
 
 function hypergryph_launcher --description "Launch Arknights Endfield (Hypergryph) via umu-run"
-    set -l proton_path $DW_PROTON_PATH
-    set -l game_exe "$HOME/Games/arknights-endfield/drive_c/Program Files/Hypergryph Launcher/Launcher.exe"
-    set -l enable_mangohud 0
-    set -l enable_gamemode 1
-    set -l wayland_env PROTON_ENABLE_WAYLAND=0
-    set -l game_args
+    _game_run \
+        --name hypergryph_launcher \
+        --exe "$HOME/Games/arknights-endfield/drive_c/Program Files/Hypergryph Launcher/Launcher.exe" \
+        --prefix "$HOME/Games/arknights-endfield" \
+        --gameid umu-arknights-endfield \
+        $argv
+end
 
-    for arg in $argv
-        switch $arg
-            case --enable-mangohud
-                set enable_mangohud 1
-            case --disable-gamemode
-                set enable_gamemode 0
-            case --enable-wayland
-                set wayland_env PROTON_ENABLE_WAYLAND=1
-            case --disable-wayland
-                set wayland_env PROTON_ENABLE_WAYLAND=0
-            case '*'
-                set -a game_args $arg
-        end
-    end
+function endfield_daily --description "Launch Arknights Endfield daily build inside a labwc session"
+    _game_run \
+        --name endfield_daily \
+        --exe "$HOME/Games/.bin/Arknights Endfield/Endfield.exe" \
+        --prefix "$HOME/Games/arknights_endfield_daily" \
+        --cwd "$HOME/Games/.bin/Arknights Endfield" \
+        --labwc \
+        $argv
+end
 
-    if not test -d $proton_path
-        echo "endfield: Proton not found at: $proton_path" >&2
-        return 1
-    end
-
-    if not test -f $game_exe
-        echo "endfield: Game executable not found at: $game_exe" >&2
-        return 1
-    end
-
-    set -l command umu-run $game_exe $game_args
-    if test $enable_mangohud -eq 1
-        set command mangohud $command
-    end
-    if test $enable_gamemode -eq 1
-        set command gamemoderun $command
-    end
-
-    mkdir -p "$HOME/Games/arknights-endfield"
-    systemd-inhibit --what=idle --who="hypergryph_launcher" --why="Game is running" \
-        env WINEPREFIX="$HOME/Games/arknights-endfield" \
-        GAMEID=umu-arknights-endfield \
-        PROTONPATH=$proton_path \
-        $wayland_env \
-        $command
+function endfield_kill --description "Stop Arknights Endfield by killing its wineserver"
+    _game_kill --prefix "$HOME/Games/arknights-endfield"
 end
 
 function hypergryph_launcher_kill --description "Stop Arknights Endfield by killing its wineserver"
-    set -lx PROTONPATH $DW_PROTON_PATH
-    set -lx WINEPREFIX "$HOME/Games/arknights-endfield"
-    wineserver_kill
+    endfield_kill
 end
 
+function endfield_daily_kill --description "Stop Arknights Endfield daily build by killing its wineserver"
+    _game_kill --prefix "$HOME/Games/arknights_endfield_daily"
+end
 
 function hypergryph_launcher_install --description "Run a Hypergryph installer exe into the arknights-endfield WINEPREFIX"
-    if test (count $argv) -lt 1
-        echo "hypergryph_launcher_install: usage: hypergryph_launcher_install <installer.exe>" >&2
+    argparse 'installer=' -- $argv
+    or return 1
+
+    if test -z "$_flag_installer"
+        echo "hypergryph_launcher_install: usage: hypergryph_launcher_install --installer <installer.exe>" >&2
         return 1
     end
 
-    set -l installer $argv[1]
+    set -l installer $_flag_installer
 
     if not test -f $installer
         echo "hypergryph_launcher_install: installer not found at: $installer" >&2
@@ -231,9 +354,8 @@ function hypergryph_launcher_install --description "Run a Hypergryph installer e
         return 1
     end
 
-    set -l version_dirs "$payload_dir"/*
     set -l version_dir
-    for candidate in $version_dirs
+    for candidate in "$payload_dir"/*
         if test -f "$candidate/Launcher.exe"; and test -f "$candidate/Games.exe"
             set version_dir $candidate
             break
@@ -252,175 +374,20 @@ function hypergryph_launcher_install --description "Run a Hypergryph installer e
     cp -f "$version_dir/Launcher.exe" "$install_dir/Launcher.exe"
     rm -rf "$tmpdir"
 
-    set -l installed_version (basename "$version_dir")
-    echo "hypergryph_launcher_install: installed Hypergryph Launcher $installed_version to: $install_dir"
+    echo "hypergryph_launcher_install: installed Hypergryph Launcher "(basename "$version_dir")" to: $install_dir"
 end
 
-function _labwc_daily_game_command --description "Build a shell-safe daily game command"
-    set -l prefix $argv[1]
-    set -l game_exe $argv[2]
-    set -l game_args $argv[3..-1]
-
-    string join -- ' ' (string escape -- \
-        env \
-        WINEPREFIX="$prefix" \
-        PROTONPATH="$DW_PROTON_PATH" \
-        PROTON_ENABLE_WAYLAND=0 \
-        SDL_GAMECONTROLLER_IGNORE_DEVICES=0x045e/0x028e \
-        umu-run "$game_exe" $game_args)
-end
-
-function _labwc_daily_session --description "Run a daily game in a labwc session"
-    set -l headless $argv[1]
-    set -l enable_wayvnc $argv[2]
-    set -l game_command $argv[3]
-    set -l session_argv "$HOME/.config/fish/risun/linux/labwc-daily-session.sh"
-    set -l backend wayland
-
-    if test $headless -eq 1
-        set backend headless
-        if test $enable_wayvnc -eq 0
-            set -a session_argv --disable-wayvnc
-        end
-    else
-        set -a session_argv --auto-output --disable-wayvnc
-    end
-
-    set -l session_command (string join -- ' ' (string escape -- $session_argv) $game_command)
-    env WLR_BACKENDS=$backend labwc --session "$session_command"
-end
-
-function labwc_endfield_daily --description "Launch Arknights Endfield daily build via labwc"
-    set -l headless 0
-    set -l enable_wayvnc 1
-
-    for arg in $argv
-        switch $arg
-            case --headless
-                set headless 1
-            case --enable-wayvnc
-                set enable_wayvnc 1
-            case --disable-wayvnc
-                set enable_wayvnc 0
-            case '*'
-                echo "labwc_endfield_daily: unknown argument: $arg" >&2
-                return 1
-        end
-    end
-
-    cd "$HOME/Games/.bin/Arknights Endfield"
-    set -l game_command (_labwc_daily_game_command \
-        "$HOME/Games/arknights_endfield_daily" \
-        "$HOME/Games/.bin/Arknights Endfield/Endfield.exe")
-    _labwc_daily_session $headless $enable_wayvnc "$game_command"
-end
-
-function endfield_daily_kill --description "Stop Arknights Endfield daily build by killing its wineserver"
-    set -lx PROTONPATH $DW_PROTON_PATH
-    set -lx WINEPREFIX "$HOME/Games/arknights_endfield_daily"
-    wineserver_kill
-end
+# --- Naraka: Bladepoint ------------------------------------------------------
 
 function naraka --description "Launch Naraka: Bladepoint via umu-run"
-    cd "$HOME/Games/.bin/Naraka"
-    set -l proton_path $DW_PROTON_PATH
-    set -l game_exe "$HOME/Games/.bin/Naraka/LauncherGame.exe"
-    set -l enable_mangohud 0
-    set -l enable_gamemode 1
-    set -l enable_wayland 1
-    set -l game_args
-
-    for arg in $argv
-        switch $arg
-            case --enable-mangohud
-                set enable_mangohud 1
-            case --disable-gamemode
-                set enable_gamemode 0
-            case --disable-wayland
-                set enable_wayland 0
-            case '*'
-                set -a game_args $arg
-        end
-    end
-
-    if not test -d $proton_path
-        echo "naraka: Proton not found at: $proton_path" >&2
-        return 1
-    end
-
-    if not test -f $game_exe
-        echo "naraka: Game executable not found at: $game_exe" >&2
-        return 1
-    end
-
-    set -l command umu-run $game_exe $game_args
-    if test $enable_mangohud -eq 1
-        set command mangohud $command
-    end
-    if test $enable_gamemode -eq 1
-        set command gamemoderun $command
-    end
-
-    mkdir -p "$HOME/Games/naraka"
-    set -l wayland_env PROTON_ENABLE_WAYLAND=0
-    if test $enable_wayland -eq 1
-        set wayland_env PROTON_ENABLE_WAYLAND=1
-    end
-    systemd-inhibit --what=idle --who="naraka" --why="Game is running" \
-        env WINEPREFIX="$HOME/Games/naraka" \
-        PROTONPATH=$proton_path \
-        $wayland_env \
-        $command
+    _game_run \
+        --name naraka \
+        --exe "$HOME/Games/.bin/Naraka/LauncherGame.exe" \
+        --prefix "$HOME/Games/naraka" \
+        --cwd "$HOME/Games/.bin/Naraka" \
+        $argv
 end
 
 function naraka_kill --description "Stop Naraka: Bladepoint by killing its wineserver"
-    set -lx PROTONPATH $DW_PROTON_PATH
-    set -lx WINEPREFIX "$HOME/Games/naraka"
-    wineserver_kill
-end
-
-function labwc_wuwa_daily --description "Launch Wuthering Waves daily via labwc"
-    set -l headless 0
-    set -l enable_dx11 0
-    set -l enable_wayvnc 1
-
-    for arg in $argv
-        switch $arg
-            case --headless
-                set headless 1
-            case --enable-dx11
-                set enable_dx11 1
-            case --enable-wayvnc
-                set enable_wayvnc 1
-            case --disable-wayvnc
-                set enable_wayvnc 0
-            case '*'
-                echo "labwc_wuwa_daily: unknown argument: $arg" >&2
-                return 1
-        end
-    end
-
-    cd "$HOME/Games/.bin/wuwa"
-    set -l game_dir "$HOME/Games/.bin/wuwa"
-    set -l saved_dir "$game_dir/Client/Saved"
-    set -l config_base "$HOME/Games/.config/wuwa_daily"
-
-    _wuwa_symlink_saved "$saved_dir" "$config_base"
-
-    set -l game_args
-    if test $enable_dx11 -eq 1
-        set -a game_args -dx11
-    end
-    set -l game_command (_labwc_daily_game_command \
-        "$HOME/Games/wuwa_daily" \
-        "$HOME/Games/.bin/wuwa/Wuthering Waves.exe" \
-        $game_args)
-    _labwc_daily_session $headless $enable_wayvnc "$game_command"
-    _wuwa_restore_saved "$saved_dir"
-end
-
-function wuwa_daily_kill --description "Stop Wuthering Waves daily by killing its wineserver"
-    set -lx PROTONPATH $DW_PROTON_PATH
-    set -lx WINEPREFIX "$HOME/Games/wuwa_daily"
-    wineserver_kill
+    _game_kill --prefix "$HOME/Games/naraka"
 end

@@ -230,3 +230,4 @@ function code_config_pi
     mkdir -p ~/.pi/agent
     code_web ~/.pi/agent
 end
+

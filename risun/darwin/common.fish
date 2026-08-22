@@ -19,9 +19,6 @@ function rm
     end
 end
 
-function real_rm
-    command rm $argv
-end
 
 function brew_up
     if command --query brew
