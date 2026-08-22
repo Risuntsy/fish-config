@@ -92,7 +92,12 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
     # labwc mode: the game runs inside a nested compositor, so Proton's own
     # Wayland backend stays off regardless of --enable-wayland.
     set -a env_vars PROTON_ENABLE_WAYLAND=0
-    set -a env_vars SDL_GAMECONTROLLER_IGNORE_DEVICES=0x045e/0x028e
+    # Keep the pad on the host session instead of the nested game. An empty
+    # allowlist ignores every controller, so this does not break when the pad
+    # is switched to a mode that reports a different VID/PID -- and unlike
+    # SDL_GAMECONTROLLER_IGNORE_DEVICES, Proton does not drop it when its own
+    # Wayland backend is on.
+    set -a env_vars SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT=0x0000/0x0000
 
     set -l session_argv $_GAME_LABWC_SESSION
     set -l backend wayland

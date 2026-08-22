@@ -1,233 +1,237 @@
-function code_config_fish
-    code ~/.config/fish --profile common
-end
+# Defines a pair of editor shortcuts for one path:
+#   code_<prefix>_<name>   ->  code <path> [--profile <code-profile>]
+#   zed_<prefix>_<name>    ->  zed <path>
+#
+#   --name             suffix of the generated function names (required)
+#   --path             path to open (required unless --path-command)
+#   --path-command     command run at call time to produce the path
+#   --code-profile     profile passed to code only
+#   --prefix           namespace of the function names, default "config"
+#   --require-command  bail out when that command is missing
+#   --require-path     bail out when the path does not exist
+#   --mkdir            create the path before opening it
+function _define_config_shortcut --description "Define code_<prefix>_<name> and zed_<prefix>_<name> for a path"
+    argparse name= path= path-command= code-profile= prefix= require-command= require-path mkdir -- $argv
+    or return 1
 
-function zed_config_fish
-    zed ~/.config/fish
-end
-
-function code_config_maa
-    if command -q maa
-        code $(maa dir config) --profile web
-    else
-        echo "maa not found"
+    if test -z "$_flag_name"
+        echo "_define_config_shortcut: --name is required" >&2
         return 1
     end
-end
 
-function zed_config_maa
-    if command -q maa
-        zed $(maa dir config)
-    else
-        echo "maa not found"
+    if test -z "$_flag_path" -a -z "$_flag_path_command"
+        echo "_define_config_shortcut: --path or --path-command is required" >&2
         return 1
     end
-end
 
-function code_config_gradle
-    if test -d ~/.gradle
-        code ~/.gradle --profile java
-    else
-        echo "~/.gradle not found"
+    set -l prefix config
+    if test -n "$_flag_prefix"
+        set prefix $_flag_prefix
+    end
+
+    # Both functions share the same guards and path resolution, so build that
+    # part once and paste it into each body.
+    set -l body
+
+    if test -n "$_flag_require_command"
+        set -a body "    if not command -q $_flag_require_command
+        echo \"$_flag_require_command not found\" >&2
         return 1
+    end"
     end
-end
 
-function zed_config_gradle
-    if test -d ~/.gradle
-        zed ~/.gradle
+    if test -n "$_flag_path_command"
+        set -a body "    set -l path ($_flag_path_command)"
     else
-        echo "~/.gradle not found"
+        # A quoted path ("~/.config/fish") never went through the caller's
+        # tilde expansion, so do it here.
+        set -l path (string replace -r '^~' $HOME -- $_flag_path)
+        set -a body "    set -l path "(string escape -- $path)
+    end
+
+    if set -q _flag_mkdir
+        set -a body "    mkdir -p \$path"
+    end
+
+    if set -q _flag_require_path
+        set -a body "    if not test -e \$path
+        echo \"\$path not found\" >&2
         return 1
-    end
-end
-
-function code_config_hosts
-    if _is_linux
-        code_web /etc/hosts
+    end"
     end
 
-    if _is_macos
-        code_web /private/etc/hosts
-    end
-end
+    set -l prelude "$(string join \n -- $body)"
 
-function zed_config_hosts
-    if _is_linux
-        zed /etc/hosts
+    set -l profile ""
+    if test -n "$_flag_code_profile"
+        set profile " --profile $_flag_code_profile"
     end
 
-    if _is_macos
-        zed /private/etc/hosts
-    end
+    set -l suffix {$prefix}_{$_flag_name}
+
+    eval "
+function code_$suffix --description \"Open the $_flag_name $prefix in code\"
+$prelude
+    code \$path$profile \$argv
 end
 
-function code_config_dotfile
-    code ~/DEV/dotfiles --profile web
+function zed_$suffix --description \"Open the $_flag_name $prefix in zed\"
+$prelude
+    zed \$path \$argv
 end
-
-function zed_config_dotfile
-    zed ~/DEV/dotfiles
-end
-
-function code_config_nix
-    code_common ~/Note/memo/os/linux/distro/nix
-end
-
-function zed_config_nix
-    zed ~/Note/memo/os/linux/distro/nix
-end
-
-function code_config_arch
-    code_common ~/Note/memo/os/linux/distro/arch
-end
-
-function zed_config_arch
-    zed ~/Note/memo/os/linux/distro/arch
-end
-
-function code_config_fedora
-    code_common ~/Note/memo/os/linux/distro/fedora
-end
-
-function zed_config_fedora
-    zed ~/Note/memo/os/linux/distro/fedora
+"
 end
 
 
-function code_config_cachyos
-    code_common ~/Note/memo/os/linux/distro/cachyos
-end
+# --- config ------------------------------------------------------------------
 
-function zed_config_cachyos
-    zed ~/Note/memo/os/linux/distro/cachyos
-end
+_define_config_shortcut \
+    --name fish \
+    --path ~/.config/fish \
+    --code-profile common
 
+_define_config_shortcut \
+    --name maa \
+    --path-command 'maa dir config' \
+    --require-command maa \
+    --code-profile web
 
-function code_config_systemd
-    code_common ~/.config/systemd/user
-end
-
-function zed_config_systemd
-    zed ~/.config/systemd/user
-end
-
-
-function code_config_proxy
-    code_web ~/Note/config/proxy
-end
-
-function zed_config_proxy
-    zed ~/Note/config/proxy
-end
+_define_config_shortcut \
+    --name gradle \
+    --path ~/.gradle \
+    --require-path \
+    --code-profile java
 
 if _is_linux
-    function code_config_container
-        code_common ~/.config/containers
+    _define_config_shortcut \
+        --name hosts \
+        --path /etc/hosts \
+        --code-profile web
+else if _is_macos
+    _define_config_shortcut \
+        --name hosts \
+        --path /private/etc/hosts \
+        --code-profile web
+end
+
+_define_config_shortcut \
+    --name dotfile \
+    --path ~/DEV/dotfiles \
+    --code-profile web
+
+_define_config_shortcut \
+    --name nix \
+    --path ~/Note/memo/os/linux/distro/nix \
+    --code-profile common
+
+_define_config_shortcut \
+    --name arch \
+    --path ~/Note/memo/os/linux/distro/arch \
+    --code-profile common
+
+_define_config_shortcut \
+    --name fedora \
+    --path ~/Note/memo/os/linux/distro/fedora \
+    --code-profile common
+
+_define_config_shortcut \
+    --name cachyos \
+    --path ~/Note/memo/os/linux/distro/cachyos \
+    --code-profile common
+
+_define_config_shortcut \
+    --name systemd \
+    --path ~/.config/systemd/user \
+    --code-profile common
+
+_define_config_shortcut \
+    --name proxy \
+    --path ~/Note/config/proxy \
+    --code-profile web
+
+if _is_linux
+    _define_config_shortcut \
+        --name container \
+        --path ~/.config/containers \
+        --code-profile common
+
+    _define_config_shortcut \
+        --name fcitx_rime \
+        --path ~/.local/share/fcitx5/rime/ \
+        --require-path \
+        --code-profile web
+
+    # Older name kept around: the zed shortcut used to be zed_config_fcitx.
+    function zed_config_fcitx --description "Alias of zed_config_fcitx_rime"
+        zed_config_fcitx_rime $argv
     end
-    function zed_config_container
-        zed ~/.config/containers
-    end
 end
 
+_define_config_shortcut \
+    --name opencode \
+    --path ~/.config/opencode \
+    --code-profile web
+
+_define_config_shortcut \
+    --name antigravity_cli \
+    --path ~/.gemini/antigravity-cli \
+    --code-profile web
+
+_define_config_shortcut \
+    --name gemini \
+    --path ~/.gemini \
+    --code-profile web
+
+_define_config_shortcut \
+    --name mangohud \
+    --path ~/.config/MangoHud \
+    --mkdir \
+    --code-profile web
+
+_define_config_shortcut \
+    --name codex \
+    --path ~/.codex \
+    --code-profile web
+
+_define_config_shortcut \
+    --name claude \
+    --path ~/.claude \
+    --code-profile web
+
+_define_config_shortcut \
+    --name pi \
+    --path ~/.pi/agent \
+    --mkdir \
+    --code-profile web
 
 
-function code_note_app
-    code ~/App --profile web
-end
+# --- note --------------------------------------------------------------------
 
-function zed_note_app
-    zed ~/App
-end
+_define_config_shortcut \
+    --prefix note \
+    --name app \
+    --path ~/App \
+    --code-profile web
 
-function code_note_memo
-    code ~/Note/memo --profile web
-end
+_define_config_shortcut \
+    --prefix note \
+    --name memo \
+    --path ~/Note/memo \
+    --code-profile web
 
-function zed_note_memo
-    zed ~/Note/memo
-end
+_define_config_shortcut \
+    --prefix note \
+    --name note \
+    --path ~/Note \
+    --code-profile web
 
-function code_note_note
-    code ~/Note --profile web
-end
+_define_config_shortcut \
+    --prefix note \
+    --name config \
+    --path ~/Note/config \
+    --code-profile web
 
-function zed_note_note
-    zed ~/Note
-end
-
-function code_note_config
-    code ~/Note/config --profile web
-end
-
-function zed_note_config
-    zed ~/Note/config
-end
-
-function code_note_config_push
-    pushd ~/Note/config
-    ./push.sh
-    popd
-end
-
-
-function code_config_fcitx_rime
-    if _is_linux
-        if test -d ~/.local/share/fcitx5/rime/
-            code_web ~/.local/share/fcitx5/rime/
-            return 0
-        else
-            echo "config folder not found"
-            return 1
-        end
-    end
-
-    echo 'not support yet'
-    return -1
-end
-
-
-function zed_config_fcitx
-    if _is_linux
-        if test -d ~/.local/share/fcitx5/rime/
-            zed ~/.local/share/fcitx5/rime/
-        else
-            return 1
-        end
-    end
-
-    echo 'not support yet'
-    return -1
-end
-
-function code_config_opencode
-    code_web ~/.config/opencode
-end
-
-
-function code_config_antigravity_cli
-    code_web ~/.gemini/antigravity-cli
-end
-
-function code_config_gemini
-    code_web ~/.gemini
-end
-
-function code_config_mangohud
-    mkdir -p ~/.config/MangoHud
-    code_web ~/.config/MangoHud
-end
-
-function code_config_codex
-    code_web ~/.codex
-end
-
-function code_config_claude
-    code_web ~/.claude
-end
-
-function code_config_pi
-    mkdir -p ~/.pi/agent
-    code_web ~/.pi/agent
-end
-
+_define_config_shortcut \
+    --name zed \
+    --path ~/.config/zed \
+    --code-profile web
