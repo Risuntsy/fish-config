@@ -29,7 +29,7 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
 
     set -l game_args $argv
 
-    set -l proton $DW_PROTON_PATH
+    set -l proton $GE_PROTON_PATH
     test -n "$_flag_proton"; and set proton $_flag_proton
 
     set -l name (basename $_flag_prefix)
@@ -153,7 +153,7 @@ function _game_kill --description "Kill the wineserver for a game prefix"
     argparse 'prefix=' 'proton=' -- $argv
     or return 1
 
-    set -l proton $DW_PROTON_PATH
+    set -l proton $GE_PROTON_PATH
     test -n "$_flag_proton"; and set proton $_flag_proton
 
     set -lx PROTONPATH $proton
@@ -287,15 +287,45 @@ end
 
 # --- Arknights: Endfield -----------------------------------------------------
 
-function endfield --description "Launch Arknights Endfield via umu-run"
+function endfield --description "Launch Arknights Endfield via umu-run, retrying the anti-cheat startup race"
     set -l game_dir "$HOME/Games/arknights-endfield/drive_c/Program Files/Hypergryph Launcher/games/Arknights Endfield"
-    _game_run \
-        --name endfield \
-        --exe "$game_dir/Endfield.exe" \
-        --prefix "$HOME/Games/arknights-endfield" \
-        --gameid umu-arknights-endfield \
-        --cwd "$game_dir" \
-        $argv
+
+    # ACE's kernel driver resolves ntoskrnl routines Proton only stubs, and a
+    # stub raises instead of returning. When that exception escapes ACE's own
+    # handler it kills winedevice.exe and the game dies within seconds, before
+    # a window ever appears. Which call turns fatal differs per launch, so a
+    # fresh attempt usually gets through. Only the fast failure is retried: a
+    # crash minutes into a session should surface, not silently relaunch.
+    set -l max_attempts 5
+    set -l fail_seconds 60
+
+    for attempt in (seq $max_attempts)
+        set -l started (date +%s)
+        _game_run \
+            --name endfield \
+            --exe "$game_dir/Endfield.exe" \
+            --prefix "$HOME/Games/arknights-endfield" \
+            --gameid umu-arknights-endfield \
+            --cwd "$game_dir" \
+            $argv
+        set -l game_status $status
+        set -l elapsed (math (date +%s) - $started)
+
+        if test $game_status -eq 0
+            return 0
+        end
+
+        # _game_run returns 1 for its own checks (missing Proton or exe), which
+        # retrying only repeats.
+        if test $game_status -eq 1; or test $elapsed -ge $fail_seconds
+            return $game_status
+        end
+
+        echo "endfield: exited $game_status after $elapsed""s, attempt $attempt/$max_attempts" >&2
+    end
+
+    echo "endfield: failed to start after $max_attempts attempts" >&2
+    return 1
 end
 
 function arknights --description "Launch Arknights via umu-run"
