@@ -1,6 +1,7 @@
 # Games launch commands (Linux only)
 
 set -g DW_PROTON_PATH "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d/DW-Proton Latest"
+set -g GE_PROTON_PATH "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d/Proton-GE Latest"
 
 set -g _GAME_LABWC_SESSION "$HOME/.config/fish/risun/linux/labwc-daily-session.sh"
 
@@ -16,6 +17,7 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
         'proton=' \
         'gameid=' \
         'cwd=' \
+        'env=+' \
         'enable-wayland' \
         'disable-gamemode' \
         'enable-mangohud' \
@@ -55,6 +57,8 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
         WINEPREFIX=$_flag_prefix \
         PROTONPATH=$proton
     test -n "$_flag_gameid"; and set -a env_vars GAMEID=$_flag_gameid
+    # --env may be repeated; each value is a bare NAME=VALUE pair.
+    set -q _flag_env; and set -a env_vars $_flag_env
 
     set -l command \
         umu-run \
@@ -146,10 +150,13 @@ function wineserver_kill --description "Kill the wineserver for the current PROT
 end
 
 function _game_kill --description "Kill the wineserver for a game prefix"
-    argparse 'prefix=' -- $argv
+    argparse 'prefix=' 'proton=' -- $argv
     or return 1
 
-    set -lx PROTONPATH $DW_PROTON_PATH
+    set -l proton $DW_PROTON_PATH
+    test -n "$_flag_proton"; and set proton $_flag_proton
+
+    set -lx PROTONPATH $proton
     set -lx WINEPREFIX $_flag_prefix
     wineserver_kill
 end
@@ -210,7 +217,7 @@ end
 # Runs WuWa with its save directories redirected at --config-base, restoring
 # them once the game exits. Remaining arguments are forwarded to _game_run.
 function _wuwa_run --description "Launch Wuthering Waves with a swapped save directory"
-    argparse --ignore-unknown 'config-base=' -- $argv
+    argparse --ignore-unknown 'config-base=' 'disable-csharp' -- $argv
     or return 1
 
     set -l saved_dir "$HOME/Games/.bin/wuwa/Client/Saved"
@@ -218,11 +225,19 @@ function _wuwa_run --description "Launch Wuthering Waves with a swapped save dir
     _wuwa_symlink_saved --saved-dir "$saved_dir" --config-base "$_flag_config_base"
     or return 1
 
+    # Left alone, the C# (Sharphereal) environment is picked server-side by a
+    # gray rollout keyed on the device id. Force it on; --disable-csharp passes
+    # no switch at all and hands the choice back to the server.
+    set -l csharp_args -ForceEnableCSharpEnvironment
+    set -q _flag_disable_csharp; and set csharp_args
+
     _game_run \
         --name wuwa \
         --exe "$HOME/Games/.bin/wuwa/Wuthering Waves.exe" \
         --cwd "$HOME/Games/.bin/wuwa" \
-        $argv
+        --env SteamOS=1 \
+        $argv \
+        $csharp_args
     set -l game_status $status
 
     _wuwa_restore_saved --saved-dir "$saved_dir"
