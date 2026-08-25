@@ -124,6 +124,5 @@ end
 
 
 function maaend
-    cp $HOME/App/MaaFramework/build/bin/Release/*.so $HOME/App/maaend/maafw/
     $HOME/App/maaend/MaaEnd $argv
 end
