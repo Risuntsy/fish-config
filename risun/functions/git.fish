@@ -49,25 +49,28 @@ function git_push_now
         set commit_msg "$commit_msg - $msg"
     end
 
-    # Step 1: Commit if needed
-    set -l changes (git status --porcelain)
+    set -l status_lines (git status --porcelain --branch)
+    set -l changes
+    if test (count $status_lines) -gt 1
+        set changes $status_lines[2..-1]
+    end
+    set -l need_push 0
+    if string match -q -r '\[ahead' -- $status_lines[1]
+        set need_push 1
+    end
+
     if test -n "$changes"
         echo "Changes detected. Staging and committing..."
         git add .; and git commit -m "$commit_msg"; or begin
             echo "Error: Git commit failed. Exiting."
             return 1
         end
+        set need_push 1
     else
         echo "No local changes to commit. Working tree is clean."
     end
 
-    # Step 2: Push if needed
-    git fetch origin >/dev/null 2>&1
-
-    set -l local_head (git rev-parse HEAD)
-    set -l upstream_head (git rev-parse '@{upstream}')
-
-    if test "$local_head" != "$upstream_head"
+    if test $need_push -eq 1
         echo "Unpushed commits found. Pushing to remote..."
         git push; or begin
             echo "Error: Git push failed."

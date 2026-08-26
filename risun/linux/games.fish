@@ -29,7 +29,7 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
 
     set -l game_args $argv
 
-    set -l proton $GE_PROTON_PATH
+    set -l proton $DW_PROTON_PATH
     test -n "$_flag_proton"; and set proton $_flag_proton
 
     set -l name (basename $_flag_prefix)
@@ -74,10 +74,10 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
 
     mkdir -p $_flag_prefix
 
-    # Some games only run from their own directory. Restore the caller's cwd
-    # afterwards so the launcher never leaves the shell somewhere else.
-    set -l prev_cwd $PWD
-    test -n "$_flag_cwd"; and cd $_flag_cwd
+    # Some games only run from their own directory. env changes directory for
+    # the game alone, so the launcher never leaves the shell somewhere else.
+    set -l env_cmd env
+    test -n "$_flag_cwd"; and set env_cmd env --chdir=$_flag_cwd
 
     if not set -q _flag_labwc
         set -a env_vars PROTON_ENABLE_WAYLAND=$wayland
@@ -85,12 +85,10 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
             --what=idle \
             --who=$name \
             --why="Game is running" \
-            env \
+            $env_cmd \
             $env_vars \
             $command
-        set -l game_status $status
-        cd $prev_cwd
-        return $game_status
+        return $status
     end
 
     # labwc mode: the game runs inside a nested compositor, so Proton's own
@@ -116,16 +114,13 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
 
     set -l session_command (string join -- ' ' (string escape -- \
         $session_argv \
-        env \
+        $env_cmd \
         $env_vars \
         $command))
 
     env WLR_BACKENDS=$backend \
         labwc \
         --session "$session_command"
-    set -l game_status $status
-    cd $prev_cwd
-    return $game_status
 end
 
 function wineserver_kill --description "Kill the wineserver for the current PROTONPATH/WINEPREFIX"
@@ -153,7 +148,7 @@ function _game_kill --description "Kill the wineserver for a game prefix"
     argparse 'prefix=' 'proton=' -- $argv
     or return 1
 
-    set -l proton $GE_PROTON_PATH
+    set -l proton $DW_PROTON_PATH
     test -n "$_flag_proton"; and set proton $_flag_proton
 
     set -lx PROTONPATH $proton
