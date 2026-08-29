@@ -55,7 +55,8 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
 
     set -l env_vars \
         WINEPREFIX=$_flag_prefix \
-        PROTONPATH=$proton
+        PROTONPATH=$proton \
+        MESA_VK_IGNORE_CONFORMANCE_WARNING=true
     test -n "$_flag_gameid"; and set -a env_vars GAMEID=$_flag_gameid
     # --env may be repeated; each value is a bare NAME=VALUE pair.
     set -q _flag_env; and set -a env_vars $_flag_env

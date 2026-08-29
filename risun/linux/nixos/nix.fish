@@ -1,5 +1,5 @@
 function nixos_rebuild_switch
-    pushd ~/Note/memo/os/linux/distro/nix/
+    pushd ~/DEV/dotfiles/nix/
     ./rebuild.sh
     popd
 end

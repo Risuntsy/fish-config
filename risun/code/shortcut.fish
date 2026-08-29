@@ -121,22 +121,22 @@ _define_config_shortcut \
 
 _define_config_shortcut \
     --name nix \
-    --path ~/Note/memo/os/linux/distro/nix \
+    --path ~/DEV/dotfiles/nix \
     --code-profile common
 
 _define_config_shortcut \
     --name arch \
-    --path ~/Note/memo/os/linux/distro/arch \
+    --path ~/DEV/scripts/system-setup/arch \
     --code-profile common
 
 _define_config_shortcut \
     --name fedora \
-    --path ~/Note/memo/os/linux/distro/fedora \
+    --path ~/DEV/scripts/system-setup/fedora \
     --code-profile common
 
 _define_config_shortcut \
     --name cachyos \
-    --path ~/Note/memo/os/linux/distro/cachyos \
+    --path ~/DEV/scripts/system-setup/cachyos \
     --code-profile common
 
 _define_config_shortcut \
@@ -146,8 +146,18 @@ _define_config_shortcut \
 
 _define_config_shortcut \
     --name proxy \
-    --path ~/Note/config/proxy \
+    --path ~/DEV/scripts/infrastructure/proxy \
     --code-profile web
+
+_define_config_shortcut \
+    --name scripts \
+    --path ~/DEV/scripts \
+    --code-profile web
+
+_define_config_shortcut \
+    --name learning \
+    --path ~/DEV/learning \
+    --code-profile common
 
 if _is_linux
     _define_config_shortcut \
@@ -205,30 +215,24 @@ _define_config_shortcut \
     --code-profile web
 
 
-# --- note --------------------------------------------------------------------
+# --- obsidian vaults --------------------------------------------------------
 
 _define_config_shortcut \
     --prefix note \
-    --name app \
-    --path ~/App \
+    --name personal \
+    --path ~/Documents/ObsidianVault/Personal \
     --code-profile web
 
 _define_config_shortcut \
     --prefix note \
-    --name memo \
-    --path ~/Note/memo \
+    --name work \
+    --path ~/Documents/ObsidianVault/Work \
     --code-profile web
 
 _define_config_shortcut \
     --prefix note \
-    --name note \
-    --path ~/Note \
-    --code-profile web
-
-_define_config_shortcut \
-    --prefix note \
-    --name config \
-    --path ~/Note/config \
+    --name private \
+    --path ~/Documents/ObsidianVault/Private \
     --code-profile web
 
 _define_config_shortcut \
