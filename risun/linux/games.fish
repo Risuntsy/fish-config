@@ -3,6 +3,9 @@
 set -g DW_PROTON_PATH "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d/DW-Proton Latest"
 set -g GE_PROTON_PATH "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d/Proton-GE Latest"
 
+set -g DEFAULT_GAME_PROTON $GE_PROTON_PATH
+
+
 set -g _GAME_LABWC_SESSION "$HOME/.config/fish/risun/linux/labwc-daily-session.sh"
 
 # Every launcher is a thin wrapper around _game_run. Each toggle has exactly one
@@ -29,7 +32,7 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
 
     set -l game_args $argv
 
-    set -l proton $DW_PROTON_PATH
+    set -l proton $DEFAULT_GAME_PROTON
     test -n "$_flag_proton"; and set proton $_flag_proton
 
     set -l name (basename $_flag_prefix)
@@ -149,7 +152,7 @@ function _game_kill --description "Kill the wineserver for a game prefix"
     argparse 'prefix=' 'proton=' -- $argv
     or return 1
 
-    set -l proton $DW_PROTON_PATH
+    set -l proton $DEFAULT_GAME_PROTON
     test -n "$_flag_proton"; and set proton $_flag_proton
 
     set -lx PROTONPATH $proton
@@ -450,4 +453,27 @@ end
 
 function naraka_kill --description "Stop Naraka: Bladepoint by killing its wineserver"
     _game_kill --prefix "$HOME/Games/naraka"
+end
+
+# --- Alice In Cradle ---------------------------------------------------------
+
+function alice_in_cradle --description "Launch Alice In Cradle via umu-run"
+    _game_run \
+        --name alice_in_cradle \
+        --exe "$HOME/Games/.bin/AliceInCradle/AliceInCradle.exe" \
+        --prefix "$HOME/Games/alice_in_cradle" \
+        --cwd "$HOME/Games/.bin/AliceInCradle" \
+        $argv
+end
+
+function alice_in_cradle_kill --description "Stop Alice In Cradle by killing its wineserver"
+    _game_kill --prefix "$HOME/Games/alice_in_cradle"
+end
+
+function aic --description "Alias of alice_in_cradle"
+    alice_in_cradle $argv
+end
+
+function aic_kill --description "Alias of alice_in_cradle_kill"
+    alice_in_cradle_kill $argv
 end
