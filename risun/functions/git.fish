@@ -71,6 +71,12 @@ function git_push_now
     end
 
     if test $need_push -eq 1
+        set -l remotes (git remote)
+        if test -z "$remotes"
+            echo "No remote repository configured. Skipping push."
+            return 0
+        end
+
         echo "Unpushed commits found. Pushing to remote..."
         git push; or begin
             echo "Error: Git push failed."
