@@ -10,3 +10,4 @@ project.fish
 completions/copilot.fish
 completions/grok.fish
 config.fish.bak.*
+.idea
