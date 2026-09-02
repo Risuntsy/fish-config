@@ -21,6 +21,7 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
         'gameid=' \
         'cwd=' \
         'env=+' \
+        'machine-id-file=' \
         'enable-wayland' \
         'disable-gamemode' \
         'enable-mangohud' \
@@ -56,6 +57,17 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
         return 1
     end
 
+    if test -n "$_flag_machine_id_file"
+        if not test -f $_flag_machine_id_file
+            echo "$name: machine-id file not found at: $_flag_machine_id_file" >&2
+            return 1
+        end
+        if not command -q bwrap
+            echo "$name: bwrap is required to override the Wine system UUID" >&2
+            return 1
+        end
+    end
+
     set -l env_vars \
         WINEPREFIX=$_flag_prefix \
         PROTONPATH=$proton \
@@ -74,6 +86,17 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
     # dedicated session, so leave the host governor alone there.
     if not set -q _flag_disable_gamemode; and not set -q _flag_labwc
         set command gamemoderun $command
+    end
+
+    # Wine derives Win32_ComputerSystemProduct.UUID from the Linux machine-id.
+    # Override it inside a private mount namespace without changing the host.
+    if test -n "$_flag_machine_id_file"
+        set command \
+            bwrap \
+            --dev-bind / / \
+            --ro-bind $_flag_machine_id_file /etc/machine-id \
+            -- \
+            $command
     end
 
     mkdir -p $_flag_prefix
@@ -257,6 +280,29 @@ function wuwa --description "Launch Wuthering Waves via umu-run"
         --prefix "$HOME/Games/wuwa" \
         $argv \
         $dx11_args
+end
+
+function wuwa_bs --description "Launch the WuWa BS launcher in the Wuthering Waves prefix"
+    set -l launcher_dir "$HOME/Games/.bin/wuwa_bs/China"
+    set -l saved_dir "$HOME/Games/.bin/wuwa/Client/Saved"
+
+    _wuwa_symlink_saved \
+        --saved-dir "$saved_dir" \
+        --config-base "$HOME/Games/.config/wuwa"
+    or return 1
+
+    _game_run \
+        --name wuwa_bs \
+        --exe "$launcher_dir/3.6.1.exe" \
+        --prefix "$HOME/Games/wuwa" \
+        --cwd "$launcher_dir" \
+        --env SteamOS=1 \
+        --machine-id-file "$launcher_dir/.wine-machine-id" \
+        $argv
+    set -l game_status $status
+
+    _wuwa_restore_saved --saved-dir "$saved_dir"
+    return $game_status
 end
 
 function wuwa_daily --description "Launch Wuthering Waves daily inside a labwc session"
