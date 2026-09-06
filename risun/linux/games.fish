@@ -3,10 +3,10 @@
 set -g DW_PROTON_PATH "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d/DW-Proton Latest"
 set -g GE_PROTON_PATH "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d/Proton-GE Latest"
 
-set -g DEFAULT_GAME_PROTON $GE_PROTON_PATH
+set -g DEFAULT_GAME_PROTON $DW_PROTON_PATH
 
 
-set -g _GAME_LABWC_SESSION "$HOME/.config/fish/risun/linux/labwc-daily-session.sh"
+set -g _GAME_LABWC_SESSION (path resolve (path dirname (status filename))/labwc-daily-session.py)
 
 # Every launcher is a thin wrapper around _game_run. Each toggle has exactly one
 # flag, the opposite of its default: wayland, mangohud and labwc are off unless
@@ -26,8 +26,10 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
         'disable-gamemode' \
         'enable-mangohud' \
         'labwc' \
+        'session-id=' \
         'headless' \
         'disable-wayvnc' \
+        'retry-times=' \
         -- $argv
     or return 1
 
@@ -106,16 +108,38 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
     set -l env_cmd env
     test -n "$_flag_cwd"; and set env_cmd env --chdir=$_flag_cwd
 
+    # Retrying is off by default: a game that dies should surface the error
+    # rather than silently relaunch. Callers whose game has a known flaky
+    # startup (e.g. an anti-cheat driver race) opt in with --retry-times.
+    # Only a fast failure is retried; a crash minutes into a session is a real
+    # problem and should be reported instead of retried away.
+    set -l max_attempts 1
+    test -n "$_flag_retry_times"; and set max_attempts $_flag_retry_times
+    set -l fail_seconds 60
+
     if not set -q _flag_labwc
         set -a env_vars PROTON_ENABLE_WAYLAND=$wayland
-        systemd-inhibit \
-            --what=idle \
-            --who=$name \
-            --why="Game is running" \
-            $env_cmd \
-            $env_vars \
-            $command
-        return $status
+        for attempt in (seq $max_attempts)
+            set -l started (date +%s)
+            systemd-inhibit \
+                --what=idle \
+                --who=$name \
+                --why="Game is running" \
+                $env_cmd \
+                $env_vars \
+                $command
+            set -l game_status $status
+            set -l elapsed (math (date +%s) - $started)
+
+            if test $game_status -eq 0
+                return 0
+            end
+            if test $attempt -eq $max_attempts; or test $elapsed -ge $fail_seconds
+                return $game_status
+            end
+            echo "$name: exited $game_status after $elapsed""s, attempt $attempt/$max_attempts" >&2
+        end
+        return 1
     end
 
     # labwc mode: the game runs inside a nested compositor, so Proton's own
@@ -128,7 +152,8 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
     # Wayland backend is on.
     set -a env_vars SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT=0x0000/0x0000
 
-    set -l session_argv $_GAME_LABWC_SESSION
+    set -l session_argv $_GAME_LABWC_SESSION run
+    set -q _flag_session_id; and set -a session_argv --session-id "$_flag_session_id"
     set -l backend wayland
     if set -q _flag_headless
         set backend headless
@@ -145,9 +170,23 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
         $env_vars \
         $command))
 
-    env WLR_BACKENDS=$backend \
-        labwc \
-        --session "$session_command"
+    for attempt in (seq $max_attempts)
+        set -l started (date +%s)
+        env WLR_BACKENDS=$backend \
+            labwc \
+            --session "$session_command"
+        set -l game_status $status
+        set -l elapsed (math (date +%s) - $started)
+
+        if test $game_status -eq 0
+            return 0
+        end
+        if test $attempt -eq $max_attempts; or test $elapsed -ge $fail_seconds
+            return $game_status
+        end
+        echo "$name: exited $game_status after $elapsed""s, attempt $attempt/$max_attempts" >&2
+    end
+    return 1
 end
 
 function wineserver_kill --description "Kill the wineserver for the current PROTONPATH/WINEPREFIX"
@@ -333,44 +372,27 @@ end
 # --- Arknights: Endfield -----------------------------------------------------
 
 function endfield --description "Launch Arknights Endfield via umu-run, retrying the anti-cheat startup race"
+    argparse --ignore-unknown 'retry-times=' -- $argv
+    or return 1
+
     set -l game_dir "$HOME/Games/arknights-endfield/drive_c/Program Files/Hypergryph Launcher/games/Arknights Endfield"
 
     # ACE's kernel driver resolves ntoskrnl routines Proton only stubs, and a
     # stub raises instead of returning. When that exception escapes ACE's own
     # handler it kills winedevice.exe and the game dies within seconds, before
     # a window ever appears. Which call turns fatal differs per launch, so a
-    # fresh attempt usually gets through. Only the fast failure is retried: a
-    # crash minutes into a session should surface, not silently relaunch.
-    set -l max_attempts 5
-    set -l fail_seconds 60
+    # fresh attempt usually gets through -- retry by default here.
+    set -l retry_times 5
+    test -n "$_flag_retry_times"; and set retry_times $_flag_retry_times
 
-    for attempt in (seq $max_attempts)
-        set -l started (date +%s)
-        _game_run \
-            --name endfield \
-            --exe "$game_dir/Endfield.exe" \
-            --prefix "$HOME/Games/arknights-endfield" \
-            --gameid umu-arknights-endfield \
-            --cwd "$game_dir" \
-            $argv
-        set -l game_status $status
-        set -l elapsed (math (date +%s) - $started)
-
-        if test $game_status -eq 0
-            return 0
-        end
-
-        # _game_run returns 1 for its own checks (missing Proton or exe), which
-        # retrying only repeats.
-        if test $game_status -eq 1; or test $elapsed -ge $fail_seconds
-            return $game_status
-        end
-
-        echo "endfield: exited $game_status after $elapsed""s, attempt $attempt/$max_attempts" >&2
-    end
-
-    echo "endfield: failed to start after $max_attempts attempts" >&2
-    return 1
+    _game_run \
+        --name endfield \
+        --exe "$game_dir/Endfield.exe" \
+        --prefix "$HOME/Games/arknights-endfield" \
+        --gameid umu-arknights-endfield \
+        --cwd "$game_dir" \
+        --retry-times $retry_times \
+        $argv
 end
 
 function arknights --description "Launch Arknights via umu-run"
