@@ -1,4 +1,4 @@
-set -l code_profiles web common rust go java sql python
+set -l code_profiles web common rust go java sql
 
 for profile in $code_profiles
     eval "

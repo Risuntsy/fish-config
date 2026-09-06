@@ -19,15 +19,15 @@ import time
 
 class ExitCode(IntEnum):
     """Exit status:
-  0  Success: help/lookup completed, or the session command exited successfully.
-  1  Wrapper failure: duplicate/missing session, startup/I/O error, or labwc ended.
-  2  Usage error: missing command/ID, invalid ID, or invalid command-line options.
-  128 + signal  Terminated by a signal (HUP=129, INT=130, TERM=143).
+      0  Success: help/lookup completed, or the session command exited successfully.
+      1  Wrapper failure: duplicate/missing session, startup/I/O error, or labwc ended.
+      2  Usage error: missing command/ID, invalid ID, or invalid command-line options.
+      128 + signal  Terminated by a signal (HUP=129, INT=130, TERM=143).
 
-The session command's own exit code is returned unchanged. It can also be 1 or 2;
-those values alone do not distinguish a command failure from a wrapper failure.
-SIGNAL_BASE is an offset for signal statuses, not a standalone wrapper result.
-"""
+    The session command's own exit code is returned unchanged. It can also be 1 or 2;
+    those values alone do not distinguish a command failure from a wrapper failure.
+    SIGNAL_BASE is an offset for signal statuses, not a standalone wrapper result.
+    """
 
     SUCCESS = 0
     ERROR = 1
@@ -82,7 +82,9 @@ def get_session(identifier):
     try:
         details = (record_dir(identifier) / "info.json").read_text()
     except FileNotFoundError:
-        raise RuntimeError(f"session {identifier} does not exist or is not ready") from None
+        raise RuntimeError(
+            f"session {identifier} does not exist or is not ready"
+        ) from None
     print(details, end="")
 
 
@@ -155,8 +157,13 @@ def start_wayvnc(stack, output_name):
     with reserve_vnc_port() as listener:
         port = listener.getsockname()[1]
         process = subprocess.Popen(
-            ["wayvnc", f"--socket={control_socket}", "--output", output_name,
-             f"fd:{listener.fileno()}"],
+            [
+                "wayvnc",
+                f"--socket={control_socket}",
+                "--output",
+                output_name,
+                f"fd:{listener.fileno()}",
+            ],
             pass_fds=(listener.fileno(),),
         )
         stack.callback(stop_process, process)
@@ -169,7 +176,9 @@ def start_wayvnc(stack, output_name):
             try:
                 ready = subprocess.run(
                     ["wayvncctl", f"--socket={control_socket}", "version"],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=0.5,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=0.5,
                 )
                 if ready.returncode == ExitCode.SUCCESS:
                     print(f"wayVNC listening on 127.0.0.1:{port}", file=sys.stderr)
@@ -183,7 +192,9 @@ def start_wayvnc(stack, output_name):
 def run_session(args):
     display = os.environ.get("WAYLAND_DISPLAY")
     if not display:
-        raise RuntimeError("WAYLAND_DISPLAY is missing; run this command via labwc --session")
+        raise RuntimeError(
+            "WAYLAND_DISPLAY is missing; run this command via labwc --session"
+        )
 
     with ExitStack() as processes, reserve_session(args.session_id) as directory:
         output_name = configure_output(args.auto_output)
@@ -220,7 +231,9 @@ def main():
     run.add_argument("--disable-wayvnc", action="store_true")
     run.add_argument("command", nargs=argparse.REMAINDER)
     get = commands.add_parser(
-        "get", help="print an active session's connection details as JSON", **help_options
+        "get",
+        help="print an active session's connection details as JSON",
+        **help_options,
     )
     get.add_argument("session_id", type=session_id)
     args = parser.parse_args()
