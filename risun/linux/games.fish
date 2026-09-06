@@ -44,6 +44,13 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
     set -l wayland 0
     set -q _flag_enable_wayland; and set wayland 1
 
+    # A session ID names the nested compositor, so it only means something when
+    # there is one. Without an ID the session simply goes unregistered.
+    if test -n "$_flag_session_id"; and not set -q _flag_labwc
+        echo "$name: --session-id requires --labwc" >&2
+        return 1
+    end
+
     if not test -d $proton
         echo "$name: Proton not found at: $proton" >&2
         return 1
@@ -153,7 +160,7 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
     set -a env_vars SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT=0x0000/0x0000
 
     set -l session_argv $_GAME_LABWC_SESSION run
-    set -q _flag_session_id; and set -a session_argv --session-id "$_flag_session_id"
+    test -n "$_flag_session_id"; and set -a session_argv --session-id "$_flag_session_id"
     set -l backend wayland
     if set -q _flag_headless
         set backend headless
@@ -187,6 +194,12 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
         echo "$name: exited $game_status after $elapsed""s, attempt $attempt/$max_attempts" >&2
     end
     return 1
+end
+
+# Prints {"wayland_display": ..., "vnc_port": ...} for a session that is up,
+# so another terminal can reach the nested compositor a daily launcher created.
+function game_session --description "Print a labwc daily session's connection details as JSON"
+    $_GAME_LABWC_SESSION get $argv
 end
 
 function wineserver_kill --description "Kill the wineserver for the current PROTONPATH/WINEPREFIX"
@@ -278,8 +291,14 @@ end
 # Runs WuWa with its save directories redirected at --config-base, restoring
 # them once the game exits. Remaining arguments are forwarded to _game_run.
 function _wuwa_run --description "Launch Wuthering Waves with a swapped save directory"
-    argparse --ignore-unknown 'config-base=' 'disable-csharp' -- $argv
+    argparse --ignore-unknown 'config-base=' 'disable-csharp' 'session-id=' -- $argv
     or return 1
+
+    # Named here rather than left in $argv: argparse only keeps an unknown
+    # option and its value adjacent by luck, and _game_run would then read the
+    # wrong token as the ID.
+    set -l session_args
+    set -q _flag_session_id; and set session_args --session-id "$_flag_session_id"
 
     set -l saved_dir "$HOME/Games/.bin/wuwa/Client/Saved"
 
@@ -297,6 +316,7 @@ function _wuwa_run --description "Launch Wuthering Waves with a swapped save dir
         --exe "$HOME/Games/.bin/wuwa/Wuthering Waves.exe" \
         --cwd "$HOME/Games/.bin/wuwa" \
         --env SteamOS=1 \
+        $session_args \
         $argv \
         $csharp_args
     set -l game_status $status
@@ -347,6 +367,7 @@ end
 function wuwa_daily --description "Launch Wuthering Waves daily inside a labwc session"
     argparse --ignore-unknown \
         'enable-dx11' \
+        'session-id=' \
         -- $argv
     or return 1
 
@@ -354,9 +375,15 @@ function wuwa_daily --description "Launch Wuthering Waves daily inside a labwc s
     set -l dx11_args
     set -q _flag_enable_dx11; and set dx11_args -dx11
 
+    # Registering is opt-in: without an ID the session is anonymous, exactly as
+    # before. Pass one to make it reachable through `game_session <id>`.
+    set -l session_args
+    set -q _flag_session_id; and set session_args --session-id "$_flag_session_id"
+
     _wuwa_run --config-base "$HOME/Games/.config/wuwa_daily" \
         --prefix "$HOME/Games/wuwa_daily" \
         --labwc \
+        $session_args \
         $argv \
         $dx11_args
 end
@@ -420,12 +447,19 @@ function hypergryph_launcher --description "Launch Arknights Endfield (Hypergryp
 end
 
 function endfield_daily --description "Launch Arknights Endfield daily build inside a labwc session"
+    argparse --ignore-unknown 'session-id=' -- $argv
+    or return 1
+
+    set -l session_args
+    set -q _flag_session_id; and set session_args --session-id "$_flag_session_id"
+
     _game_run \
         --name endfield_daily \
         --exe "$HOME/Games/.bin/Arknights Endfield/Endfield.exe" \
         --prefix "$HOME/Games/arknights_endfield_daily" \
         --cwd "$HOME/Games/.bin/Arknights Endfield" \
         --labwc \
+        $session_args \
         $argv
 end
 
