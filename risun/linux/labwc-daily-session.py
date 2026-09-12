@@ -229,6 +229,7 @@ def main():
     run.add_argument("--session-id", type=session_id)
     run.add_argument("--auto-output", action="store_true")
     run.add_argument("--disable-wayvnc", action="store_true")
+    run.add_argument("--exit-status-file", type=Path)
     run.add_argument("command", nargs=argparse.REMAINDER)
     get = commands.add_parser(
         "get",
@@ -246,14 +247,23 @@ def main():
         for watched in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
             signal.signal(watched, terminate)
 
+    status = ExitCode.ERROR
     try:
         if args.action == "get":
             get_session(args.session_id)
             return ExitCode.SUCCESS
-        return run_session(args)
+        status = run_session(args)
+        return status
+    except SystemExit as error:
+        status = error.code
+        raise
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
         print(f"labwc-daily-session: {error}", file=sys.stderr)
         return ExitCode.ERROR
+    finally:
+        # labwc does not forward its session client's exit status.
+        if args.action == "run" and args.exit_status_file is not None:
+            args.exit_status_file.write_text(f"{int(status)}\n")
 
 
 if __name__ == "__main__":

@@ -10,8 +10,9 @@ set -g _GAME_LABWC_SESSION (path resolve (path dirname (status filename))/labwc-
 
 # Every launcher is a thin wrapper around _game_run. Each toggle has exactly one
 # flag, the opposite of its default: wayland, mangohud and labwc are off unless
-# enabled, gamemode and wayvnc are on unless disabled. Anything _game_run does
-# not recognize is forwarded to the game executable.
+# enabled, gamemode is on unless disabled. labwc is headed unless --headless;
+# headless wayvnc is on unless --disable-wayvnc. Anything _game_run does not
+# recognize is forwarded to the game executable.
 function _game_run --description "Launch a Proton game via umu-run, directly or inside a labwc session"
     argparse --ignore-unknown \
         'name=' \
@@ -48,6 +49,14 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
     # there is one. Without an ID the session simply goes unregistered.
     if test -n "$_flag_session_id"; and not set -q _flag_labwc
         echo "$name: --session-id requires --labwc" >&2
+        return 1
+    end
+    if set -q _flag_headless; and not set -q _flag_labwc
+        echo "$name: --headless requires --labwc" >&2
+        return 1
+    end
+    if set -q _flag_disable_wayvnc; and not set -q _flag_labwc
+        echo "$name: --disable-wayvnc requires --labwc" >&2
         return 1
     end
 
@@ -159,30 +168,40 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
     # Wayland backend is on.
     set -a env_vars SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT=0x0000/0x0000
 
-    set -l session_argv $_GAME_LABWC_SESSION run
+    set -l session_argv uv run python $_GAME_LABWC_SESSION run
     test -n "$_flag_session_id"; and set -a session_argv --session-id "$_flag_session_id"
+    # Headed labwc already has a window on the host, so skip wayVNC. Headless
+    # has no local screen, so start wayVNC unless the caller opts out.
     set -l backend wayland
     if set -q _flag_headless
         set backend headless
         set -q _flag_disable_wayvnc; and set -a session_argv --disable-wayvnc
     else
-        set -a session_argv \
-            --auto-output \
-            --disable-wayvnc
+        set -a session_argv --auto-output --disable-wayvnc
     end
 
-    set -l session_command (string join -- ' ' (string escape -- \
-        $session_argv \
-        $env_cmd \
-        $env_vars \
-        $command))
-
     for attempt in (seq $max_attempts)
+        set -l status_file (mktemp)
+        or return 1
+        set -l session_command (string join -- ' ' (string escape -- \
+            $session_argv --exit-status-file $status_file \
+            $env_cmd \
+            $env_vars \
+            $command))
         set -l started (date +%s)
         env WLR_BACKENDS=$backend \
             labwc \
             --session "$session_command"
         set -l game_status $status
+        if test $game_status -eq 0
+            # A missing result means the session helper did not finish.
+            set game_status 1
+            set -l session_status (string trim -- (cat $status_file))
+            if string match -qr '^[0-9]+$' -- "$session_status"
+                set game_status $session_status
+            end
+        end
+        command unlink $status_file
         set -l elapsed (math (date +%s) - $started)
 
         if test $game_status -eq 0
@@ -199,7 +218,7 @@ end
 # Prints {"wayland_display": ..., "vnc_port": ...} for a session that is up,
 # so another terminal can reach the nested compositor a daily launcher created.
 function game_session --description "Print a labwc daily session's connection details as JSON"
-    $_GAME_LABWC_SESSION get $argv
+    uv run python $_GAME_LABWC_SESSION get $argv
 end
 
 function wineserver_kill --description "Kill the wineserver for the current PROTONPATH/WINEPREFIX"
@@ -288,8 +307,34 @@ function _wuwa_restore_saved --description "Restore WuWa Config, DeviceSaved, an
     end
 end
 
-# Runs WuWa with its save directories redirected at --config-base, restoring
-# them once the game exits. Remaining arguments are forwarded to _game_run.
+# Redirect the shared save directories exclusively until the command exits.
+function _wuwa_with_saved --description "Hold the shared WuWa save-directory lock while running a command"
+    argparse 'saved-dir=' 'config-base=' -- $argv
+    or return 1
+
+    set -l saved_dir $_flag_saved_dir
+    set -l lock_dir (path dirname "$saved_dir")
+    mkdir -p "$lock_dir"
+    or return 1
+
+    # Keep the lock file in Client: Saved can be recreated by game updates.
+    # The open descriptor holds the lock through both launch and restoration.
+    begin
+        if not flock --nonblock 9
+            echo "wuwa: shared save directory is in use: $saved_dir" >&2
+            return 1
+        end
+
+        _wuwa_symlink_saved --saved-dir "$saved_dir" --config-base "$_flag_config_base"
+        or return 1
+
+        $argv
+        set -l game_status $status
+        _wuwa_restore_saved --saved-dir "$saved_dir"
+        return $game_status
+    end 9>"$lock_dir/.wuwa-saved.lock"
+end
+
 function _wuwa_run --description "Launch Wuthering Waves with a swapped save directory"
     argparse --ignore-unknown 'config-base=' 'disable-csharp' 'session-id=' -- $argv
     or return 1
@@ -302,16 +347,14 @@ function _wuwa_run --description "Launch Wuthering Waves with a swapped save dir
 
     set -l saved_dir "$HOME/Games/.bin/wuwa/Client/Saved"
 
-    _wuwa_symlink_saved --saved-dir "$saved_dir" --config-base "$_flag_config_base"
-    or return 1
-
     # Left alone, the C# (Sharphereal) environment is picked server-side by a
     # gray rollout keyed on the device id. Force it on; --disable-csharp passes
     # no switch at all and hands the choice back to the server.
     set -l csharp_args -ForceEnableCSharpEnvironment
     set -q _flag_disable_csharp; and set csharp_args
 
-    _game_run \
+    _wuwa_with_saved --saved-dir "$saved_dir" --config-base "$_flag_config_base" -- \
+        _game_run \
         --name wuwa \
         --exe "$HOME/Games/.bin/wuwa/Wuthering Waves.exe" \
         --cwd "$HOME/Games/.bin/wuwa" \
@@ -319,10 +362,6 @@ function _wuwa_run --description "Launch Wuthering Waves with a swapped save dir
         $session_args \
         $argv \
         $csharp_args
-    set -l game_status $status
-
-    _wuwa_restore_saved --saved-dir "$saved_dir"
-    return $game_status
 end
 
 function wuwa --description "Launch Wuthering Waves via umu-run"
@@ -345,12 +384,8 @@ function wuwa_bs --description "Launch the WuWa BS launcher in the Wuthering Wav
     set -l launcher_dir "$HOME/Games/.bin/wuwa_bs/China"
     set -l saved_dir "$HOME/Games/.bin/wuwa/Client/Saved"
 
-    _wuwa_symlink_saved \
-        --saved-dir "$saved_dir" \
-        --config-base "$HOME/Games/.config/wuwa"
-    or return 1
-
-    _game_run \
+    _wuwa_with_saved --saved-dir "$saved_dir" --config-base "$HOME/Games/.config/wuwa" -- \
+        _game_run \
         --name wuwa_bs \
         --exe "$launcher_dir/3.6.1.exe" \
         --prefix "$HOME/Games/wuwa" \
@@ -358,10 +393,6 @@ function wuwa_bs --description "Launch the WuWa BS launcher in the Wuthering Wav
         --env SteamOS=1 \
         --machine-id-file "$launcher_dir/.wine-machine-id" \
         $argv
-    set -l game_status $status
-
-    _wuwa_restore_saved --saved-dir "$saved_dir"
-    return $game_status
 end
 
 function wuwa_daily --description "Launch Wuthering Waves daily inside a labwc session"
