@@ -2,24 +2,18 @@ if command --query podman
     podman completion fish | source
 end
 
-# bun
 set -gx BUN_INSTALL "$HOME/.bun"
-if test -d $BUN_INSTALL/bin; and not contains $BUN_INSTALL/bin $fish_user_paths
-    fish_add_path $BUN_INSTALL/bin
-end
 
-if test -d $HOME/.local/share/flutter/bin
-    fish_add_path -U -p $HOME/.local/share/flutter/bin
-end
-# uv / local bin
-if test -d "$HOME/.local/bin"; and not contains "$HOME/.local/bin" $fish_user_paths
-    fish_add_path "$HOME/.local/bin"
-end
-
-if test -d $HOME/.local/share/flutter/bin
-    fish_add_path -U -p $HOME/.local/share/flutter/bin
-end
-
-if test -d $HOME/.opencode/bin
-    fish_add_path -U -p $HOME/.opencode/bin
+for tool_bin in \
+    "$HOME/.local/bin" \
+    "$HOME/.cargo/bin" \
+    "$BUN_INSTALL/bin" \
+    "$HOME/.deno/bin" \
+    "$HOME/go/bin" \
+    "$HOME/.local/share/flutter/bin" \
+    "$HOME/.opencode/bin" \
+    "$HOME/App/.bin"
+    if test -d "$tool_bin"; and not contains -- "$tool_bin" $PATH
+        fish_add_path --global "$tool_bin"
+    end
 end

@@ -1,9 +1,11 @@
 # Games launch commands (Linux only)
 
-set -g DW_PROTON_PATH "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d/DW-Proton Latest"
-set -g GE_PROTON_PATH "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/compatibilitytools.d/Proton-GE Latest"
+source (path dirname (status filename))/game-proton.fish
 
-set -g DEFAULT_GAME_PROTON $DW_PROTON_PATH
+set -g DW_PROTON_PATH (_game_resolve_proton dw 2>/dev/null)
+set -g GE_PROTON_PATH (_game_resolve_proton ge 2>/dev/null)
+
+set -g DEFAULT_GAME_PROTON dw
 
 
 set -g _GAME_LABWC_SESSION (path resolve (path dirname (status filename))/labwc-daily-session.py)
@@ -60,10 +62,8 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
         return 1
     end
 
-    if not test -d $proton
-        echo "$name: Proton not found at: $proton" >&2
-        return 1
-    end
+    set proton (_game_resolve_proton "$proton")
+    or return 1
 
     if not test -f $_flag_exe
         echo "$name: game executable not found at: $_flag_exe" >&2
@@ -248,6 +248,8 @@ function _game_kill --description "Kill the wineserver for a game prefix"
 
     set -l proton $DEFAULT_GAME_PROTON
     test -n "$_flag_proton"; and set proton $_flag_proton
+    set proton (_game_resolve_proton "$proton")
+    or return 1
 
     set -lx PROTONPATH $proton
     set -lx WINEPREFIX $_flag_prefix
@@ -420,11 +422,11 @@ function wuwa_daily --description "Launch Wuthering Waves daily inside a labwc s
 end
 
 function wuwa_kill --description "Stop Wuthering Waves by killing its wineserver"
-    _game_kill --prefix "$HOME/Games/wuwa"
+    _game_kill --prefix "$HOME/Games/wuwa" $argv
 end
 
 function wuwa_daily_kill --description "Stop Wuthering Waves daily by killing its wineserver"
-    _game_kill --prefix "$HOME/Games/wuwa_daily"
+    _game_kill --prefix "$HOME/Games/wuwa_daily" $argv
 end
 
 # --- Arknights: Endfield -----------------------------------------------------
@@ -465,7 +467,7 @@ function arknights --description "Launch Arknights via umu-run"
 end
 
 function arknights_kill --description "Stop Arknights by killing its wineserver"
-    _game_kill --prefix "$HOME/Games/arknights-endfield"
+    _game_kill --prefix "$HOME/Games/arknights-endfield" $argv
 end
 
 function hypergryph_launcher --description "Launch Arknights Endfield (Hypergryph) via umu-run"
@@ -495,15 +497,15 @@ function endfield_daily --description "Launch Arknights Endfield daily build ins
 end
 
 function endfield_kill --description "Stop Arknights Endfield by killing its wineserver"
-    _game_kill --prefix "$HOME/Games/arknights-endfield"
+    _game_kill --prefix "$HOME/Games/arknights-endfield" $argv
 end
 
 function hypergryph_launcher_kill --description "Stop Arknights Endfield by killing its wineserver"
-    endfield_kill
+    endfield_kill $argv
 end
 
 function endfield_daily_kill --description "Stop Arknights Endfield daily build by killing its wineserver"
-    _game_kill --prefix "$HOME/Games/arknights_endfield_daily"
+    _game_kill --prefix "$HOME/Games/arknights_endfield_daily" $argv
 end
 
 function hypergryph_launcher_install --description "Run a Hypergryph installer exe into the arknights-endfield WINEPREFIX"
@@ -585,7 +587,7 @@ function naraka --description "Launch Naraka: Bladepoint via umu-run"
 end
 
 function naraka_kill --description "Stop Naraka: Bladepoint by killing its wineserver"
-    _game_kill --prefix "$HOME/Games/naraka"
+    _game_kill --prefix "$HOME/Games/naraka" $argv
 end
 
 # --- Alice In Cradle ---------------------------------------------------------
@@ -600,7 +602,7 @@ function alice_in_cradle --description "Launch Alice In Cradle via umu-run"
 end
 
 function alice_in_cradle_kill --description "Stop Alice In Cradle by killing its wineserver"
-    _game_kill --prefix "$HOME/Games/alice_in_cradle"
+    _game_kill --prefix "$HOME/Games/alice_in_cradle" $argv
 end
 
 function aic --description "Alias of alice_in_cradle"

@@ -162,7 +162,8 @@ def start_wayvnc(stack, output_name):
                 f"--socket={control_socket}",
                 "--output",
                 output_name,
-                f"fd:{listener.fileno()}",
+                "--external-listener-fd",
+                str(listener.fileno()),
             ],
             pass_fds=(listener.fileno(),),
         )

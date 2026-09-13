@@ -12,6 +12,7 @@ for game in alice_in_cradle arknights endfield endfield_daily hypergryph_launche
     end
 
     complete -c $game -l enable-mangohud -d "Enable MangoHud"
+    complete -c $game -l proton -r -a 'dw ge' -d "Proton family (system first) or build directory"
     complete -c $game -l headless -d "Use the headless WLR backend and start wayVNC$labwc_only"
     complete -c $game -l disable-wayvnc -d "Disable wayVNC$headless_only"
 end
@@ -25,6 +26,10 @@ complete -c aic --wraps alice_in_cradle
 
 for game in aic alice_in_cradle arknights endfield endfield_daily hypergryph_launcher naraka wineserver wuwa wuwa_daily
     complete -c {$game}_kill -f
+end
+
+for game in aic alice_in_cradle arknights endfield endfield_daily hypergryph_launcher naraka wuwa wuwa_daily
+    complete -c {$game}_kill -l proton -r -a 'dw ge' -d "Proton family (system first) or build directory"
 end
 
 complete -c hypergryph_launcher_install -f
