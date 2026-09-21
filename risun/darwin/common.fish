@@ -1,24 +1,3 @@
-function rm
-    set filtered_argv
-    for arg in $argv
-        switch $arg
-            case '-r' '-f' '-rf' '-fr'
-                # skip these options
-            case '*'
-                if test -e $arg
-                    set filtered_argv $filtered_argv $arg
-                end
-        end
-    end
-
-    if command --query trash
-        trash $filtered_argv
-    else
-        echo "trash not found, do nothing"
-        return 1
-    end
-end
-
 
 function brew_up
     if command --query brew

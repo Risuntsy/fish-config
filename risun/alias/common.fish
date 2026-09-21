@@ -41,3 +41,31 @@ function mpv_top
         return 1
     end
 end
+
+
+function rm
+    set filtered_argv
+    for arg in $argv
+        switch $arg
+            case '-r' '-R' '-f' '-rf' '-fr'
+                # skip these options
+            case '*'
+                if test -e $arg; or test -L $arg
+                    set filtered_argv $filtered_argv $arg
+                end
+        end
+    end
+
+    if test -z "$filtered_argv"
+        echo "rm: missing operand"
+        return 1
+    end
+
+    if command --query trash
+        trash $filtered_argv
+    else
+        echo "trash not found, do nothing"
+        return 1
+    end
+end
+
