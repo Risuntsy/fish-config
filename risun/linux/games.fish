@@ -11,10 +11,10 @@ set -g DEFAULT_GAME_PROTON dw
 set -g _GAME_LABWC_SESSION (path resolve (path dirname (status filename))/labwc-daily-session.py)
 
 # Every launcher is a thin wrapper around _game_run. Each toggle has exactly one
-# flag, the opposite of its default: wayland, mangohud and labwc are off unless
-# enabled, gamemode is on unless disabled. labwc is headed unless --headless;
-# headless wayvnc is on unless --disable-wayvnc. Anything _game_run does not
-# recognize is forwarded to the game executable.
+# flag, the opposite of its default: Proton Wayland and gamemode are on unless
+# disabled, while mangohud and labwc are off unless enabled. labwc is headed
+# unless --headless; headless wayvnc is on unless --disable-wayvnc. Anything
+# _game_run does not recognize is forwarded to the game executable.
 function _game_run --description "Launch a Proton game via umu-run, directly or inside a labwc session"
     argparse --ignore-unknown \
         'name=' \
@@ -25,7 +25,7 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
         'cwd=' \
         'env=+' \
         'machine-id-file=' \
-        'enable-wayland' \
+        'disable-wayland' \
         'disable-gamemode' \
         'enable-mangohud' \
         'labwc' \
@@ -44,8 +44,8 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
     set -l name (basename $_flag_prefix)
     test -n "$_flag_name"; and set name $_flag_name
 
-    set -l wayland 0
-    set -q _flag_enable_wayland; and set wayland 1
+    set -l wayland 1
+    set -q _flag_disable_wayland; and set wayland 0
 
     # A session ID names the nested compositor, so it only means something when
     # there is one. Without an ID the session simply goes unregistered.
@@ -89,6 +89,7 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
     set -l env_vars \
         WINEPREFIX=$_flag_prefix \
         PROTONPATH=$proton \
+        PROTON_ENABLE_WAYLAND=$wayland \
         MESA_VK_IGNORE_CONFORMANCE_WARNING=true
     test -n "$_flag_gameid"; and set -a env_vars GAMEID=$_flag_gameid
     # --env may be repeated; each value is a bare NAME=VALUE pair.
@@ -134,7 +135,6 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
     set -l fail_seconds 60
 
     if not set -q _flag_labwc
-        set -a env_vars PROTON_ENABLE_WAYLAND=$wayland
         for attempt in (seq $max_attempts)
             set -l started (date +%s)
             systemd-inhibit \
@@ -158,9 +158,6 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
         return 1
     end
 
-    # labwc mode: the game runs inside a nested compositor, so Proton's own
-    # Wayland backend stays off regardless of --enable-wayland.
-    set -a env_vars PROTON_ENABLE_WAYLAND=0
     # Keep the pad on the host session instead of the nested game. An empty
     # allowlist ignores every controller, so this does not break when the pad
     # is switched to a mode that reports a different VID/PID -- and unlike
@@ -218,7 +215,13 @@ end
 # Prints {"wayland_display": ..., "vnc_port": ...} for a session that is up,
 # so another terminal can reach the nested compositor a daily launcher created.
 function game_session --description "Print a labwc daily session's connection details as JSON"
-    uv run python $_GAME_LABWC_SESSION get $argv
+    # The Python CLI needs `get <id>`. Accept both `game_session wuwa` and
+    # `game_session get wuwa` so a leading get is not passed through twice.
+    set -l id $argv
+    if test (count $id) -ge 1; and test $id[1] = get
+        set -e id[1]
+    end
+    uv run python $_GAME_LABWC_SESSION get $id
 end
 
 function wineserver_kill --description "Kill the wineserver for the current PROTONPATH/WINEPREFIX"
@@ -416,6 +419,7 @@ function wuwa_daily --description "Launch Wuthering Waves daily inside a labwc s
     _wuwa_run --config-base "$HOME/Games/.config/wuwa_daily" \
         --prefix "$HOME/Games/wuwa_daily" \
         --labwc \
+        --disable-wayland \
         $session_args \
         $argv \
         $dx11_args
@@ -492,6 +496,7 @@ function endfield_daily --description "Launch Arknights Endfield daily build ins
         --prefix "$HOME/Games/arknights_endfield_daily" \
         --cwd "$HOME/Games/.bin/Arknights Endfield" \
         --labwc \
+        --disable-wayland \
         $session_args \
         $argv
 end

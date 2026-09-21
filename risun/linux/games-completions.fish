@@ -6,11 +6,11 @@ for game in alice_in_cradle arknights endfield endfield_daily hypergryph_launche
         set labwc_only ""
         set headless_only " (headless only)"
     else
-        complete -c $game -l enable-wayland -d "Enable Proton Wayland"
         complete -c $game -l disable-gamemode -d "Disable GameMode"
         complete -c $game -l labwc -d "Run inside a nested labwc session"
     end
 
+    complete -c $game -l disable-wayland -d "Disable Proton Wayland"
     complete -c $game -l enable-mangohud -d "Enable MangoHud"
     complete -c $game -l proton -r -a 'dw ge' -d "Proton family (system first) or build directory"
     complete -c $game -l headless -d "Use the headless WLR backend and start wayVNC$labwc_only"
