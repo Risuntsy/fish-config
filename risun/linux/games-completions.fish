@@ -24,17 +24,20 @@ end
 
 complete -c aic --wraps alice_in_cradle
 
-for game in aic alice_in_cradle arknights endfield endfield_daily hypergryph_launcher naraka wineserver wuwa wuwa_daily
+for game in aic alice_in_cradle arknights endfield endfield_daily naraka wineserver wuwa wuwa_daily
     complete -c {$game}_kill -f
 end
 
-for game in aic alice_in_cradle arknights endfield endfield_daily hypergryph_launcher naraka wuwa wuwa_daily
+for game in aic alice_in_cradle arknights endfield endfield_daily naraka wuwa wuwa_daily
     complete -c {$game}_kill -l proton -r -a 'dw ge' -d "Proton family (system first) or build directory"
 end
 
-complete -c hypergryph_launcher_install -f
-complete -c hypergryph_launcher_install -l installer -d "Path to the Hypergryph installer .exe" \
-    -r -a '(__fish_complete_suffix .exe)'
+# hypergryph_launcher: the common game flags above, plus one action at a time.
+set -l hypergryph_action '__fish_seen_argument -l install -l kill'
+# No condition on --install: it would also hide the .exe paths after the flag.
+complete -c hypergryph_launcher -l install -d "Extract a Hypergryph installer .exe into the prefix" \
+    -r -F -a '(__fish_complete_suffix .exe)'
+complete -c hypergryph_launcher -n "not $hypergryph_action" -l kill -d "Kill the launcher's wineserver"
 
 # kuro_launcher: one action at a time; plain launch accepts the usual game flags.
 set -l kuro_action '__fish_seen_argument -l install -l patch -l kill'

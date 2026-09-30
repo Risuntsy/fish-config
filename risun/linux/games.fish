@@ -366,6 +366,7 @@ function _wuwa_run --description "Launch Wuthering Waves with a swapped save dir
         --env SteamOS=1 \
         $session_args \
         $argv \
+        -krqlv=uhd \
         $csharp_args
 end
 
@@ -573,15 +574,6 @@ function arknights_kill --description "Stop Arknights by killing its wineserver"
     _game_kill --prefix "$HOME/Games/arknights-endfield" $argv
 end
 
-function hypergryph_launcher --description "Launch Arknights Endfield (Hypergryph) via umu-run"
-    _game_run \
-        --name hypergryph_launcher \
-        --exe "$HOME/Games/arknights-endfield/drive_c/Program Files/Hypergryph Launcher/Launcher.exe" \
-        --prefix "$HOME/Games/arknights-endfield" \
-        --gameid umu-arknights-endfield \
-        $argv
-end
-
 function endfield_daily --description "Launch Arknights Endfield daily build inside a labwc session"
     argparse --ignore-unknown 'session-id=' -- $argv
     or return 1
@@ -604,41 +596,34 @@ function endfield_kill --description "Stop Arknights Endfield by killing its win
     _game_kill --prefix "$HOME/Games/arknights-endfield" $argv
 end
 
-function hypergryph_launcher_kill --description "Stop Arknights Endfield by killing its wineserver"
-    endfield_kill $argv
-end
-
 function endfield_daily_kill --description "Stop Arknights Endfield daily build by killing its wineserver"
     _game_kill --prefix "$HOME/Games/arknights_endfield_daily" $argv
 end
 
-function hypergryph_launcher_install --description "Run a Hypergryph installer exe into the arknights-endfield WINEPREFIX"
-    argparse 'installer=' -- $argv
+# The installer is an NSIS archive, so its payload is extracted directly
+# instead of running it under Wine.
+function _hypergryph_launcher_install --description "Extract a Hypergryph installer exe into a WINEPREFIX"
+    argparse 'installer=' 'prefix=' -- $argv
     or return 1
-
-    if test -z "$_flag_installer"
-        echo "hypergryph_launcher_install: usage: hypergryph_launcher_install --installer <installer.exe>" >&2
-        return 1
-    end
 
     set -l installer $_flag_installer
 
     if not test -f $installer
-        echo "hypergryph_launcher_install: installer not found at: $installer" >&2
+        echo "hypergryph_launcher: installer not found at: $installer" >&2
         return 1
     end
 
-    set -l prefix "$HOME/Games/arknights-endfield"
+    set -l prefix $_flag_prefix
     set -l install_dir "$prefix/drive_c/Program Files/Hypergryph Launcher"
 
     if not command -q 7z
-        echo "hypergryph_launcher_install: 7z is required to extract the NSIS payload" >&2
+        echo "hypergryph_launcher: 7z is required to extract the NSIS payload" >&2
         return 1
     end
 
     set -l tmpdir (mktemp -d)
     if test -z "$tmpdir"
-        echo "hypergryph_launcher_install: failed to create temporary directory" >&2
+        echo "hypergryph_launcher: failed to create temporary directory" >&2
         return 1
     end
 
@@ -652,7 +637,7 @@ function hypergryph_launcher_install --description "Run a Hypergryph installer e
     set -l payload_dir "$tmpdir/\$0"
     if not test -d "$payload_dir"
         rm -rf "$tmpdir"
-        echo "hypergryph_launcher_install: installer payload not found in archive" >&2
+        echo "hypergryph_launcher: installer payload not found in archive" >&2
         return 1
     end
 
@@ -666,7 +651,7 @@ function hypergryph_launcher_install --description "Run a Hypergryph installer e
 
     if test -z "$version_dir"
         rm -rf "$tmpdir"
-        echo "hypergryph_launcher_install: Launcher.exe and Games.exe not found in installer payload" >&2
+        echo "hypergryph_launcher: Launcher.exe and Games.exe not found in installer payload" >&2
         return 1
     end
 
@@ -676,7 +661,33 @@ function hypergryph_launcher_install --description "Run a Hypergryph installer e
     cp -f "$version_dir/Launcher.exe" "$install_dir/Launcher.exe"
     rm -rf "$tmpdir"
 
-    echo "hypergryph_launcher_install: installed Hypergryph Launcher "(basename "$version_dir")" to: $install_dir"
+    echo "hypergryph_launcher: installed Hypergryph Launcher "(basename "$version_dir")" to: $install_dir"
+end
+
+# With no action flag this launches the launcher. --install and --kill each do
+# only their own job and are exclusive.
+function hypergryph_launcher --description "Install, launch, or kill the Hypergryph launcher"
+    argparse --ignore-unknown --exclusive install,kill 'install=' 'kill' -- $argv
+    or return 1
+
+    set -l prefix "$HOME/Games/arknights-endfield"
+
+    if set -q _flag_kill
+        _game_kill --prefix "$prefix" $argv
+        return
+    end
+
+    if test -n "$_flag_install"
+        _hypergryph_launcher_install --installer "$_flag_install" --prefix "$prefix"
+        return
+    end
+
+    _game_run \
+        --name hypergryph_launcher \
+        --exe "$prefix/drive_c/Program Files/Hypergryph Launcher/Launcher.exe" \
+        --prefix "$prefix" \
+        --gameid umu-arknights-endfield \
+        $argv
 end
 
 # --- Naraka: Bladepoint ------------------------------------------------------
