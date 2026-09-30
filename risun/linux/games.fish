@@ -425,6 +425,105 @@ function wuwa_daily --description "Launch Wuthering Waves daily inside a labwc s
         $dx11_args
 end
 
+# Test whether the official Kuro launcher runs under Proton. It lives in its own
+# prefix so a broken install cannot touch the real wuwa prefix or its saves.
+# Run the downloaded installer once with --install, then launch without it.
+#
+# Out of the box the launcher window never opens under Wine. The workaround
+# (github.com/timetetng/wutheringwaves-cli-manager docs/wuwa-launcher.md) is to
+# report Windows 7 to WebView2 and binary-patch launcher_main.dll. Both are
+# checked before every launch because a launcher update ships a fresh DLL.
+function _kuro_launcher_fix --description "Apply the WebView2 and launcher_main.dll workarounds"
+    argparse 'prefix=' 'launcher-dir=' 'proton=' -- $argv
+    or return 1
+
+    set -l prefix $_flag_prefix
+
+    set -l key 'Software\\\\Wine\\\\AppDefaults\\\\msedgewebview2.exe'
+    if not grep -qF "[$key]" "$prefix/user.reg" 2>/dev/null
+        set -l proton (_game_resolve_proton "$_flag_proton")
+        or return 1
+        env WINEPREFIX=$prefix PROTONPATH=$proton \
+            umu-run reg add 'HKCU\Software\Wine\AppDefaults\msedgewebview2.exe' \
+            /v Version /d win7 /f
+        or begin
+            echo "kuro_launcher: failed to set the WebView2 Windows version" >&2
+            return 1
+        end
+    end
+
+    # The launcher keeps each release in a version directory; patch the newest.
+    set -l version_dir (path filter -d $_flag_launcher_dir/*.*.*.* | sort -V | tail -n1)
+    if test -z "$version_dir"
+        echo "kuro_launcher: no version directory in: $_flag_launcher_dir" >&2
+        return 1
+    end
+
+    set -l dll "$version_dir/launcher_main.dll"
+    if not grep -qa (printf '\x12AllowsTransparency') $dll
+        return 0
+    end
+
+    # Same-length replacement, so perl does what the guide uses bbe for.
+    cp -f $dll $dll.bak
+    or return 1
+    if not perl -0777 -pe 's/\x12AllowsTransparency/\x09IsEnabled\x1bA\x00\x03AAAAA/g' $dll.bak >$dll
+        cp -f $dll.bak $dll
+        echo "kuro_launcher: failed to patch $dll" >&2
+        return 1
+    end
+    echo "kuro_launcher: patched $dll"
+end
+
+# With no action flag this launches the launcher, applying the fix first.
+# --install, --patch and --kill each do only their own job and are exclusive.
+function kuro_launcher --description "Install, patch, launch, or kill the official Kuro launcher"
+    argparse --ignore-unknown --exclusive install,patch,kill \
+        'install=' 'patch' 'kill' 'launcher-dir=' 'proton=' -- $argv
+    or return 1
+
+    # Kept at its original path: moving a Wine prefix breaks the paths the
+    # installer already recorded in it.
+    set -l prefix "$HOME/Games/wuwa_launcher"
+    set -l launcher_dir "$prefix/drive_c/Program Files/Wuthering Waves"
+    test -n "$_flag_launcher_dir"; and set launcher_dir $_flag_launcher_dir
+
+    set -l proton $DEFAULT_GAME_PROTON
+    test -n "$_flag_proton"; and set proton $_flag_proton
+
+    if set -q _flag_kill
+        _game_kill --prefix "$prefix" --proton "$proton"
+        return
+    end
+
+    if set -q _flag_patch
+        _kuro_launcher_fix --prefix "$prefix" --launcher-dir "$launcher_dir" --proton "$proton"
+        return
+    end
+
+    set -l exe "$launcher_dir/launcher.exe"
+    set -l cwd_args --cwd "$launcher_dir"
+    if test -n "$_flag_install"
+        set exe (path resolve -- $_flag_install)
+        set cwd_args
+    else
+        _kuro_launcher_fix --prefix "$prefix" --launcher-dir "$launcher_dir" --proton "$proton"
+        or return 1
+    end
+
+    # The launcher UI is a WebView2 page. Under Proton's Wayland driver it
+    # loads and runs (its log shows the page and background video playing) but
+    # the window stays black, so always use X11.
+    _game_run \
+        --name kuro_launcher \
+        --exe "$exe" \
+        --prefix "$prefix" \
+        --proton "$proton" \
+        --disable-wayland \
+        $cwd_args \
+        $argv
+end
+
 function wuwa_kill --description "Stop Wuthering Waves by killing its wineserver"
     _game_kill --prefix "$HOME/Games/wuwa" $argv
 end
