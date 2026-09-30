@@ -434,6 +434,28 @@ end
 # (github.com/timetetng/wutheringwaves-cli-manager docs/wuwa-launcher.md) is to
 # report Windows 7 to WebView2 and binary-patch launcher_main.dll. Both are
 # checked before every launch because a launcher update ships a fresh DLL.
+# The launcher keeps each release in a version directory; use the newest.
+function _kuro_launcher_dll --description "Print the newest launcher_main.dll path"
+    set -l version_dir (path filter -d $argv[1]/*.*.*.* | sort -V | tail -n1)
+    if test -z "$version_dir"
+        echo "kuro_launcher: no version directory in: $argv[1]" >&2
+        return 1
+    end
+    echo "$version_dir/launcher_main.dll"
+end
+
+function _kuro_launcher_restore --description "Restore launcher_main.dll from its .bak"
+    set -l dll (_kuro_launcher_dll $argv[1])
+    or return 1
+    if not test -f $dll.bak
+        echo "kuro_launcher: no backup to restore at: $dll.bak" >&2
+        return 1
+    end
+    mv -f $dll.bak $dll
+    or return 1
+    echo "kuro_launcher: restored $dll"
+end
+
 function _kuro_launcher_fix --description "Apply the WebView2 and launcher_main.dll workarounds"
     argparse 'prefix=' 'launcher-dir=' 'proton=' -- $argv
     or return 1
@@ -453,19 +475,14 @@ function _kuro_launcher_fix --description "Apply the WebView2 and launcher_main.
         end
     end
 
-    # The launcher keeps each release in a version directory; patch the newest.
-    set -l version_dir (path filter -d $_flag_launcher_dir/*.*.*.* | sort -V | tail -n1)
-    if test -z "$version_dir"
-        echo "kuro_launcher: no version directory in: $_flag_launcher_dir" >&2
-        return 1
-    end
-
-    set -l dll "$version_dir/launcher_main.dll"
+    set -l dll (_kuro_launcher_dll $_flag_launcher_dir)
+    or return 1
     if not grep -qa (printf '\x12AllowsTransparency') $dll
         return 0
     end
 
-    # Same-length replacement, so perl does what the guide uses bbe for.
+    # Same-length replacement, so perl does what the guide uses bbe for. The
+    # pattern only matches an unpatched DLL, so the .bak is always pristine.
     cp -f $dll $dll.bak
     or return 1
     if not perl -0777 -pe 's/\x12AllowsTransparency/\x09IsEnabled\x1bA\x00\x03AAAAA/g' $dll.bak >$dll
@@ -477,10 +494,11 @@ function _kuro_launcher_fix --description "Apply the WebView2 and launcher_main.
 end
 
 # With no action flag this launches the launcher, applying the fix first.
-# --install, --patch and --kill each do only their own job and are exclusive.
-function kuro_launcher --description "Install, patch, launch, or kill the official Kuro launcher"
-    argparse --ignore-unknown --exclusive install,patch,kill \
-        'install=' 'patch' 'kill' 'launcher-dir=' 'proton=' -- $argv
+# --install, --patch, --restore and --kill each do only their own job and are
+# exclusive. --restore undoes the DLL patch; the next launch reapplies it.
+function kuro_launcher --description "Install, patch, restore, launch, or kill the official Kuro launcher"
+    argparse --ignore-unknown --exclusive install,patch,restore,kill \
+        'install=' 'patch' 'restore' 'kill' 'launcher-dir=' 'proton=' -- $argv
     or return 1
 
     # Kept at its original path: moving a Wine prefix breaks the paths the
@@ -494,6 +512,11 @@ function kuro_launcher --description "Install, patch, launch, or kill the offici
 
     if set -q _flag_kill
         _game_kill --prefix "$prefix" --proton "$proton"
+        return
+    end
+
+    if set -q _flag_restore
+        _kuro_launcher_restore "$launcher_dir"
         return
     end
 
