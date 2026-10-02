@@ -150,6 +150,11 @@ _define_config_shortcut \
     --code-profile web
 
 _define_config_shortcut \
+    --name ai_proxy \
+    --path ~/DEV/scripts/infrastructure/ai-proxy \
+    --code-profile web
+
+_define_config_shortcut \
     --name scripts \
     --path ~/DEV/scripts \
     --code-profile web
