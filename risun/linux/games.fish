@@ -750,6 +750,7 @@ function re1999 --description "Install, launch, or kill Reverse: 1999 via umu-ru
         --exe "$exe" \
         --prefix "$prefix" \
         --proton "$proton" \
+        --disable-wayland \
         $cwd_args \
         $install_run_args \
         $argv \
