@@ -794,3 +794,36 @@ end
 function aic_kill --description "Alias of alice_in_cradle_kill"
     alice_in_cradle_kill $argv
 end
+
+# --- Symphonic Rain ----------------------------------------------------------
+
+function symphonic_rain --description "Launch Symphonic Rain via umu-run"
+    argparse --ignore-unknown 'proton=' -- $argv
+    or return 1
+
+    set -l game_dir "$HOME/Games/.bin/Symphonic Rain"
+    set -l prefix "$HOME/Games/symphonic_rain"
+    set -l proton $DEFAULT_GAME_PROTON
+    test -n "$_flag_proton"; and set proton $_flag_proton
+    set proton (_game_resolve_proton "$proton")
+    or return 1
+
+    # Apply regadd.bat's locale entry without prompting when it already exists.
+    set -l locale_exe "Z:"(string replace --all / \\ -- "$game_dir/SR_qc.exe")
+    env --chdir="$game_dir" WINEPREFIX="$prefix" PROTONPATH="$proton" \
+        umu-run reg.exe add 'HKEY_CURRENT_USER\Software\Borland\Locales' \
+        /v "$locale_exe" /d MOO /f
+    or return $status
+
+    _game_run \
+        --name symphonic_rain \
+        --exe "$game_dir/SR.exe" \
+        --prefix "$prefix" \
+        --proton "$proton" \
+        --cwd "$game_dir" \
+        $argv
+end
+
+function symphonic_rain_kill --description "Stop Symphonic Rain by killing its wineserver"
+    _game_kill --prefix "$HOME/Games/symphonic_rain" $argv
+end
