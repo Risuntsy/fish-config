@@ -6,14 +6,6 @@ end
 #     eza --color=always $argv
 # end
 
-function df
-    duf $argv
-end
-
-function real_df
-    command df $argv
-end
-
 function real_ls
     command ls $argv
 end

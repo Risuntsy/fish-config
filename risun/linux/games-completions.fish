@@ -44,19 +44,20 @@ complete -c re1999 -l install -d "Run a Reverse: 1999 installer .exe in the game
     -r -F -a '(__fish_complete_suffix .exe)'
 complete -c re1999 -n "not $re1999_action" -l kill -d "Kill the game's wineserver"
 
-# kuro_launcher: one action at a time; plain launch accepts the usual game flags.
-set -l kuro_action '__fish_seen_argument -l install -l patch -l kill'
-complete -c kuro_launcher -f
+# wuwa_launcher: one action at a time; plain launch accepts the usual game flags.
+set -l wuwa_launcher_action '__fish_seen_argument -l install -l patch -l restore -l kill'
+complete -c wuwa_launcher -f
 # No condition on --install: it would also hide the .exe paths after the flag.
-complete -c kuro_launcher -l install -d "Run a Kuro installer .exe in the launcher prefix" \
+complete -c wuwa_launcher -l install -d "Run a Wuthering Waves installer .exe in the launcher prefix" \
     -r -F -a '(__fish_complete_suffix .exe)'
-complete -c kuro_launcher -n "not $kuro_action" -l patch -d "Apply the WebView2 and launcher_main.dll fix only"
-complete -c kuro_launcher -n "not $kuro_action" -l kill -d "Kill the launcher's wineserver"
-complete -c kuro_launcher -l proton -r -a 'dw ge' -d "Proton family (system first) or build directory"
-complete -c kuro_launcher -n '__fish_not_contain_opt kill' -l launcher-dir -r -a '(__fish_complete_directories)' \
+complete -c wuwa_launcher -n "not $wuwa_launcher_action" -l patch -d "Apply the WebView2 and launcher_main.dll fix only"
+complete -c wuwa_launcher -n "not $wuwa_launcher_action" -l restore -d "Restore the unpatched launcher_main.dll"
+complete -c wuwa_launcher -n "not $wuwa_launcher_action" -l kill -d "Kill the launcher's wineserver"
+complete -c wuwa_launcher -l proton -r -a 'dw ge' -d "Proton family (system first) or build directory"
+complete -c wuwa_launcher -n '__fish_not_contain_opt kill' -l launcher-dir -r -a '(__fish_complete_directories)' \
     -d "Launcher install directory"
-complete -c kuro_launcher -n '__fish_not_contain_opt patch kill' -l disable-gamemode -d "Disable GameMode"
-complete -c kuro_launcher -n '__fish_not_contain_opt patch kill' -l enable-mangohud -d "Enable MangoHud"
-complete -c kuro_launcher -n '__fish_not_contain_opt patch kill' -l labwc -d "Run inside a nested labwc session"
-complete -c kuro_launcher -n '__fish_not_contain_opt patch kill' -l headless -d "Use the headless WLR backend and start wayVNC (labwc only)"
-complete -c kuro_launcher -n '__fish_not_contain_opt patch kill' -l disable-wayvnc -d "Disable wayVNC (headless labwc only)"
+complete -c wuwa_launcher -n '__fish_not_contain_opt patch restore kill' -l disable-gamemode -d "Disable GameMode"
+complete -c wuwa_launcher -n '__fish_not_contain_opt patch restore kill' -l enable-mangohud -d "Enable MangoHud"
+complete -c wuwa_launcher -n '__fish_not_contain_opt patch restore kill' -l labwc -d "Run inside a nested labwc session"
+complete -c wuwa_launcher -n '__fish_not_contain_opt patch restore kill' -l headless -d "Use the headless WLR backend and start wayVNC (labwc only)"
+complete -c wuwa_launcher -n '__fish_not_contain_opt patch restore kill' -l disable-wayvnc -d "Disable wayVNC (headless labwc only)"
