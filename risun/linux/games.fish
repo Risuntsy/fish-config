@@ -713,6 +713,43 @@ function hypergryph_launcher --description "Install, launch, or kill the Hypergr
         $argv
 end
 
+# --- Reverse: 1999 ----------------------------------------------------------
+
+# Install into a fixed directory so plain re1999 can find the launcher.
+# NSIS requires its /D destination override to be the final argument.
+function re1999 --description "Install, launch, or kill Reverse: 1999 via umu-run"
+    argparse --ignore-unknown --exclusive install,kill 'install=' 'kill' 'proton=' -- $argv
+    or return 1
+
+    set -l prefix "$HOME/Games/re1999"
+    set -l launcher_dir "$prefix/drive_c/Reverse1999"
+    set -l proton $DEFAULT_GAME_PROTON
+    test -n "$_flag_proton"; and set proton $_flag_proton
+
+    if set -q _flag_kill
+        _game_kill --prefix "$prefix" --proton "$proton" $argv
+        return
+    end
+
+    set -l exe "$launcher_dir/reverse1999-launcher.exe"
+    set -l cwd_args --cwd "$launcher_dir"
+    set -l install_args
+    if set -q _flag_install
+        set exe (path resolve -- "$_flag_install")
+        set cwd_args
+        set install_args '/D=C:\Reverse1999'
+    end
+
+    _game_run \
+        --name re1999 \
+        --exe "$exe" \
+        --prefix "$prefix" \
+        --proton "$proton" \
+        $cwd_args \
+        $argv \
+        $install_args
+end
+
 # --- Naraka: Bladepoint ------------------------------------------------------
 
 function naraka --description "Launch Naraka: Bladepoint via umu-run"

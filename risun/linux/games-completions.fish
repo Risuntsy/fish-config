@@ -1,5 +1,5 @@
 # Loaded by risun/import.fish with the other Linux configuration files.
-for game in alice_in_cradle arknights endfield endfield_daily hypergryph_launcher naraka wuwa wuwa_bs wuwa_daily
+for game in alice_in_cradle arknights endfield endfield_daily hypergryph_launcher naraka re1999 wuwa wuwa_bs wuwa_daily
     set -l labwc_only " (labwc only)"
     set -l headless_only " (headless labwc only)"
     if contains -- $game endfield_daily wuwa_daily
@@ -38,6 +38,11 @@ set -l hypergryph_action '__fish_seen_argument -l install -l kill'
 complete -c hypergryph_launcher -l install -d "Extract a Hypergryph installer .exe into the prefix" \
     -r -F -a '(__fish_complete_suffix .exe)'
 complete -c hypergryph_launcher -n "not $hypergryph_action" -l kill -d "Kill the launcher's wineserver"
+
+set -l re1999_action '__fish_seen_argument -l install -l kill'
+complete -c re1999 -l install -d "Run a Reverse: 1999 installer .exe in the game prefix" \
+    -r -F -a '(__fish_complete_suffix .exe)'
+complete -c re1999 -n "not $re1999_action" -l kill -d "Kill the game's wineserver"
 
 # kuro_launcher: one action at a time; plain launch accepts the usual game flags.
 set -l kuro_action '__fish_seen_argument -l install -l patch -l kill'
