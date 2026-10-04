@@ -719,27 +719,6 @@ end
 
 # --- Reverse: 1999 ----------------------------------------------------------
 
-# Resolve the launcher's recorded Windows install path through Wine's drives.
-function _re1999_launcher_dir --description "Find the installed Reverse: 1999 launcher"
-    set -l prefix $argv[1]
-    if test -f "$prefix/user.reg"
-        for windows_dir in (string match -rg '^"laucher_exe_install_dir"="([^"]+)"$' <"$prefix/user.reg")
-            set -l install_path (string replace -ar '\\\\+' / -- "$windows_dir")
-            if not string match -qr '^[A-Za-z]:/' -- "$install_path"
-                continue
-            end
-            set -l drive (string lower -- (string sub -l 2 -- "$install_path"))
-            set -l relative_path (string sub -s 4 -- "$install_path")
-            set -l launcher_dir "$prefix/dosdevices/$drive/$relative_path"
-            if test -d "$prefix/dosdevices/$drive"
-                path resolve -- "$launcher_dir"
-                return 0
-            end
-        end
-    end
-    echo "$prefix/drive_c/Reverse1999"
-end
-
 # NSIS requires its /D destination override to be the final argument.
 function re1999 --description "Install, launch, or kill Reverse: 1999 via umu-run"
     argparse --ignore-unknown --exclusive install,kill 'install=' 'kill' 'proton=' -- $argv
@@ -754,7 +733,7 @@ function re1999 --description "Install, launch, or kill Reverse: 1999 via umu-ru
         return
     end
 
-    set -l launcher_dir (_re1999_launcher_dir "$prefix")
+    set -l launcher_dir "$prefix/drive_c/Reverse1999/reverse1999_global"
     set -l exe "$launcher_dir/reverse1999-launcher.exe"
     set -l cwd_args --cwd "$launcher_dir"
     set -l install_args
