@@ -780,6 +780,7 @@ function alice_in_cradle --description "Launch Alice In Cradle via umu-run"
         --exe "$HOME/Games/.bin/AliceInCradle/AliceInCradle.exe" \
         --prefix "$HOME/Games/alice_in_cradle" \
         --cwd "$HOME/Games/.bin/AliceInCradle" \
+        --disable-gamemode \
         $argv
 end
 
@@ -810,8 +811,8 @@ function symphonic_rain --description "Launch Symphonic Rain via umu-run"
 
     # Apply regadd.bat's locale entry without prompting when it already exists.
     set -l locale_exe "Z:"(string replace --all / \\ -- "$game_dir/SR_qc.exe")
-    env --chdir="$game_dir" WINEPREFIX="$prefix" PROTONPATH="$proton" \
-        umu-run reg.exe add 'HKEY_CURRENT_USER\Software\Borland\Locales' \
+    env --chdir="$game_dir" WINEPREFIX="$prefix" PROTONPATH="$proton" PROTON_USE_WOW64=1 \
+        umu-run "$proton/files/lib/wine/x86_64-windows/reg.exe" add 'HKEY_CURRENT_USER\Software\Borland\Locales' \
         /v "$locale_exe" /d MOO /f
     or return $status
 
@@ -821,6 +822,9 @@ function symphonic_rain --description "Launch Symphonic Rain via umu-run"
         --prefix "$prefix" \
         --proton "$proton" \
         --cwd "$game_dir" \
+        --disable-wayland \
+        --disable-gamemode \
+        --env PROTON_USE_WOW64=1 \
         $argv
 end
 
