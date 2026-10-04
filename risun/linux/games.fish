@@ -798,27 +798,64 @@ end
 
 # --- Symphonic Rain ----------------------------------------------------------
 
-function symphonic_rain --description "Launch Symphonic Rain via umu-run"
-    argparse --ignore-unknown 'proton=' -- $argv
+function symphonic_rain --description "Set up, launch, or stop Symphonic Rain"
+    argparse --ignore-unknown --exclusive setup,kill 'setup=?' 'kill' 'proton=' -- $argv
     or return 1
 
     set -l game_dir "$HOME/Games/.bin/Symphonic Rain"
     set -l prefix "$HOME/Games/symphonic_rain"
+    set -l game_dir_file "$prefix/game-dir"
+    if test -f "$game_dir_file"
+        read game_dir < "$game_dir_file"
+    end
     set -l proton $DEFAULT_GAME_PROTON
     test -n "$_flag_proton"; and set proton $_flag_proton
     set proton (_game_resolve_proton "$proton")
     or return 1
 
-    # Apply regadd.bat's locale entry without prompting when it already exists.
-    set -l locale_exe "Z:"(string replace --all / \\ -- "$game_dir/SR_qc.exe")
-    env --chdir="$game_dir" WINEPREFIX="$prefix" PROTONPATH="$proton" PROTON_USE_WOW64=1 \
-        umu-run "$proton/files/lib/wine/x86_64-windows/reg.exe" add 'HKEY_CURRENT_USER\Software\Borland\Locales' \
-        /v "$locale_exe" /d MOO /f
-    or return $status
+    if set -q _flag_kill
+        _game_kill --prefix "$prefix" --proton "$proton"
+        return
+    end
+
+    if set -q _flag_setup
+        set game_dir "$HOME/Games/.bin/Symphonic Rain"
+        if test -n "$_flag_setup"
+            set game_dir $_flag_setup
+        else if test (count $argv) -gt 0
+            set game_dir $argv[1]
+        end
+        set game_dir (path resolve -- "$game_dir")
+        for file in SR_qc.exe SR_qc.MOO sr_loc.dll Essai.ttf
+            if not test -f "$game_dir/$file"
+                echo "symphonic_rain: required game file not found: $game_dir/$file" >&2
+                return 1
+            end
+        end
+
+        mkdir -p "$prefix/drive_c/windows/Fonts"
+        or return 1
+        cp "$game_dir/Essai.ttf" "$prefix/drive_c/windows/Fonts/Essai.ttf"
+        or return 1
+
+        # Derive the locale key from Wine's directory rather than assuming a
+        # drive letter. The translated executable loads its MOO through it.
+        set -l setup_file "$prefix/drive_c/symphonic-rain-setup.cmd"
+        printf '%s\r\n' '@echo off' \
+            'reg add "HKEY_CURRENT_USER\Software\Borland\Locales" /v "%cd%\SR_qc.exe" /d MOO /f' > "$setup_file"
+        or return 1
+        env --chdir="$game_dir" WINEPREFIX="$prefix" PROTONPATH="$proton" PROTON_USE_WOW64=1 \
+            umu-run cmd.exe /c 'C:\symphonic-rain-setup.cmd'
+        set -l setup_status $status
+        rm -f "$setup_file"
+        test $setup_status -eq 0; or return $setup_status
+        printf '%s\n' "$game_dir" > "$game_dir_file"
+        return $status
+    end
 
     _game_run \
         --name symphonic_rain \
-        --exe "$game_dir/SR.exe" \
+        --exe "$game_dir/SR_qc.exe" \
         --prefix "$prefix" \
         --proton "$proton" \
         --cwd "$game_dir" \
@@ -829,5 +866,5 @@ function symphonic_rain --description "Launch Symphonic Rain via umu-run"
 end
 
 function symphonic_rain_kill --description "Stop Symphonic Rain by killing its wineserver"
-    _game_kill --prefix "$HOME/Games/symphonic_rain" $argv
+    symphonic_rain --kill $argv
 end
