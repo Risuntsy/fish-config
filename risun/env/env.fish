@@ -8,7 +8,6 @@ for tool_bin in \
     "$HOME/.local/bin" \
     "$HOME/.cargo/bin" \
     "$BUN_INSTALL/bin" \
-    "$HOME/.deno/bin" \
     "$HOME/go/bin" \
     "$HOME/.local/share/flutter/bin" \
     "$HOME/.opencode/bin" \
