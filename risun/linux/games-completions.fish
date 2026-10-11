@@ -10,6 +10,7 @@ for game in alice_in_cradle arknights endfield endfield_daily hypergryph_launche
         complete -c $game -l labwc -d "Run inside a nested labwc session"
     end
 
+    complete -c $game -l wait -d "Run in the foreground instead of detaching"
     complete -c $game -l disable-wayland -d "Disable Proton Wayland"
     complete -c $game -l enable-mangohud -d "Enable MangoHud"
     complete -c $game -l proton -r -a 'dw ge' -d "Proton family (system first) or build directory"
@@ -61,3 +62,5 @@ complete -c wuwa_launcher -n '__fish_not_contain_opt patch restore kill' -l enab
 complete -c wuwa_launcher -n '__fish_not_contain_opt patch restore kill' -l labwc -d "Run inside a nested labwc session"
 complete -c wuwa_launcher -n '__fish_not_contain_opt patch restore kill' -l headless -d "Use the headless WLR backend and start wayVNC (labwc only)"
 complete -c wuwa_launcher -n '__fish_not_contain_opt patch restore kill' -l disable-wayvnc -d "Disable wayVNC (headless labwc only)"
+complete -c wuwa_launcher -l wait -d "Run in the foreground instead of detaching"
+complete -c symphonic_rain -l wait -d "Run in the foreground instead of detaching"

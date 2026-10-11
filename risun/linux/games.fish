@@ -10,6 +10,26 @@ set -g DEFAULT_GAME_PROTON dw
 
 set -g _GAME_LABWC_SESSION (path resolve (path dirname (status filename))/labwc-daily-session.py)
 
+# Launchers detach by default, like `code`: the command reruns itself with
+# --wait in a new session, so closing the terminal does not take the game down.
+# fish cannot background a function, hence the separate fish process. Output
+# goes to a per-command log, replaced on each launch. _game_run accepts and
+# drops --wait, so it never reaches the game executable.
+function _game_detach --description "Rerun a game launcher with --wait, detached from the terminal"
+    set -l name $argv[1]
+    set -l state_home $XDG_STATE_HOME
+    test -n "$state_home"; or set state_home $HOME/.local/state
+    set -l log_dir $state_home/games
+    mkdir -p $log_dir
+    or return 1
+
+    set -l log $log_dir/$name.log
+    setsid --fork fish --command (string join -- ' ' (string escape -- $argv[1] --wait $argv[2..])) \
+        </dev/null >$log 2>&1
+    or return 1
+    echo "$name: started in background, log: $log"
+end
+
 # Every launcher is a thin wrapper around _game_run. Each toggle has exactly one
 # flag, the opposite of its default: Proton Wayland and gamemode are on unless
 # disabled, while mangohud and labwc are off unless enabled. labwc is headed
@@ -33,6 +53,7 @@ function _game_run --description "Launch a Proton game via umu-run, directly or 
         'headless' \
         'disable-wayvnc' \
         'retry-times=' \
+        'wait' \
         -- $argv
     or return 1
 
@@ -371,6 +392,11 @@ function _wuwa_run --description "Launch Wuthering Waves with a swapped save dir
 end
 
 function wuwa --description "Launch Wuthering Waves via umu-run"
+    if not contains -- --wait $argv
+        _game_detach wuwa $argv
+        return
+    end
+
     argparse --ignore-unknown \
         'enable-dx11' \
         -- $argv
@@ -387,6 +413,11 @@ function wuwa --description "Launch Wuthering Waves via umu-run"
 end
 
 function wuwa_bs --description "Launch the WuWa BS launcher in the Wuthering Waves prefix"
+    if not contains -- --wait $argv
+        _game_detach wuwa_bs $argv
+        return
+    end
+
     set -l launcher_dir "$HOME/Games/.bin/wuwa_bs/China"
     set -l saved_dir "$HOME/Games/.bin/wuwa/Client/Saved"
 
@@ -402,6 +433,11 @@ function wuwa_bs --description "Launch the WuWa BS launcher in the Wuthering Wav
 end
 
 function wuwa_daily --description "Launch Wuthering Waves daily inside a labwc session"
+    if not contains -- --wait $argv
+        _game_detach wuwa_daily $argv
+        return
+    end
+
     argparse --ignore-unknown \
         'enable-dx11' \
         'session-id=' \
@@ -497,6 +533,8 @@ end
 # --install, --patch, --restore and --kill each do only their own job and are
 # exclusive. --restore undoes the DLL patch; the next launch reapplies it.
 function wuwa_launcher --description "Install, patch, restore, launch, or kill the official Wuthering Waves launcher"
+    # argparse consumes the flags; keep them for the detached rerun.
+    set -l launch_args $argv
     argparse --ignore-unknown --exclusive install,patch,restore,kill \
         'install=' 'patch' 'restore' 'kill' 'launcher-dir=' 'proton=' -- $argv
     or return 1
@@ -520,6 +558,11 @@ function wuwa_launcher --description "Install, patch, restore, launch, or kill t
 
     if set -q _flag_patch
         _wuwa_launcher_fix --prefix "$prefix" --launcher-dir "$launcher_dir" --proton "$proton"
+        return
+    end
+
+    if not contains -- --wait $launch_args
+        _game_detach wuwa_launcher $launch_args
         return
     end
 
@@ -561,6 +604,11 @@ end
 # --- Arknights: Endfield -----------------------------------------------------
 
 function endfield --description "Launch Arknights Endfield via umu-run, retrying the anti-cheat startup race"
+    if not contains -- --wait $argv
+        _game_detach endfield $argv
+        return
+    end
+
     argparse --ignore-unknown 'retry-times=' -- $argv
     or return 1
 
@@ -585,6 +633,11 @@ function endfield --description "Launch Arknights Endfield via umu-run, retrying
 end
 
 function arknights --description "Launch Arknights via umu-run"
+    if not contains -- --wait $argv
+        _game_detach arknights $argv
+        return
+    end
+
     set -l game_dir "$HOME/Games/arknights-endfield/drive_c/Program Files/Hypergryph Launcher/games/Arknights"
     _game_run \
         --name arknights \
@@ -600,6 +653,11 @@ function arknights_kill --description "Stop Arknights by killing its wineserver"
 end
 
 function endfield_daily --description "Launch Arknights Endfield daily build inside a labwc session"
+    if not contains -- --wait $argv
+        _game_detach endfield_daily $argv
+        return
+    end
+
     argparse --ignore-unknown 'session-id=' -- $argv
     or return 1
 
@@ -692,6 +750,8 @@ end
 # With no action flag this launches the launcher. --install and --kill each do
 # only their own job and are exclusive.
 function hypergryph_launcher --description "Install, launch, or kill the Hypergryph launcher"
+    # argparse consumes the flags; keep them for the detached rerun.
+    set -l launch_args $argv
     argparse --ignore-unknown --exclusive install,kill 'install=' 'kill' -- $argv
     or return 1
 
@@ -707,6 +767,11 @@ function hypergryph_launcher --description "Install, launch, or kill the Hypergr
         return
     end
 
+    if not contains -- --wait $launch_args
+        _game_detach hypergryph_launcher $launch_args
+        return
+    end
+
     _game_run \
         --name hypergryph_launcher \
         --exe "$prefix/drive_c/Program Files/Hypergryph Launcher/Launcher.exe" \
@@ -719,6 +784,8 @@ end
 
 # NSIS requires its /D destination override to be the final argument.
 function re1999 --description "Install, launch, or kill Reverse: 1999 via umu-run"
+    # argparse consumes the flags; keep them for the detached rerun.
+    set -l launch_args $argv
     argparse --ignore-unknown --exclusive install,kill 'install=' 'kill' 'proton=' -- $argv
     or return 1
 
@@ -743,6 +810,11 @@ function re1999 --description "Install, launch, or kill Reverse: 1999 via umu-ru
         set install_args '/D=C:\Reverse1999'
     end
 
+    if not contains -- --wait $launch_args
+        _game_detach re1999 $launch_args
+        return
+    end
+
     _game_run \
         --name re1999 \
         --exe "$exe" \
@@ -758,6 +830,11 @@ end
 # --- Naraka: Bladepoint ------------------------------------------------------
 
 function naraka --description "Launch Naraka: Bladepoint via umu-run"
+    if not contains -- --wait $argv
+        _game_detach naraka $argv
+        return
+    end
+
     _game_run \
         --name naraka \
         --exe "$HOME/Games/.bin/Naraka/LauncherGame.exe" \
@@ -773,6 +850,11 @@ end
 # --- Alice In Cradle ---------------------------------------------------------
 
 function alice_in_cradle --description "Launch Alice In Cradle via umu-run"
+    if not contains -- --wait $argv
+        _game_detach alice_in_cradle $argv
+        return
+    end
+
     _game_run \
         --name alice_in_cradle \
         --exe "$HOME/Games/.bin/AliceInCradle/AliceInCradle.exe" \
@@ -797,6 +879,8 @@ end
 # --- Symphonic Rain ----------------------------------------------------------
 
 function symphonic_rain --description "Set up, launch, or stop Symphonic Rain"
+    # argparse consumes the flags; keep them for the detached rerun.
+    set -l launch_args $argv
     argparse --ignore-unknown --exclusive setup,kill 'setup=?' 'kill' 'proton=' -- $argv
     or return 1
 
@@ -849,6 +933,11 @@ function symphonic_rain --description "Set up, launch, or stop Symphonic Rain"
         test $setup_status -eq 0; or return $setup_status
         printf '%s\n' "$game_dir" > "$game_dir_file"
         return $status
+    end
+
+    if not contains -- --wait $launch_args
+        _game_detach symphonic_rain $launch_args
+        return
     end
 
     _game_run \
