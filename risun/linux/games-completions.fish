@@ -1,8 +1,8 @@
 # Loaded by risun/import.fish with the other Linux configuration files.
-for game in alice_in_cradle arknights endfield endfield_daily hypergryph_launcher naraka re1999 wuwa wuwa_bs wuwa_daily
+for game in alice_in_cradle hypergryph_launcher hypergryph_launcher_daily naraka re1999 wuwa wuwa_bs wuwa_daily
     set -l labwc_only " (labwc only)"
     set -l headless_only " (headless labwc only)"
-    if contains -- $game endfield_daily wuwa_daily
+    if contains -- $game hypergryph_launcher_daily wuwa_daily
         set labwc_only ""
         set headless_only " (headless only)"
     else
@@ -25,20 +25,23 @@ end
 
 complete -c aic --wraps alice_in_cradle
 
-for game in aic alice_in_cradle arknights endfield endfield_daily naraka wineserver wuwa wuwa_daily
+for game in aic alice_in_cradle naraka wineserver wuwa wuwa_daily
     complete -c {$game}_kill -f
 end
 
-for game in aic alice_in_cradle arknights endfield endfield_daily naraka wuwa wuwa_daily
+for game in aic alice_in_cradle naraka wuwa wuwa_daily
     complete -c {$game}_kill -l proton -r -a 'dw ge' -d "Proton family (system first) or build directory"
 end
 
-# hypergryph_launcher: the common game flags above, plus one action at a time.
+# Hypergryph launchers accept one action at a time.
 set -l hypergryph_action '__fish_seen_argument -l install -l kill'
-# No condition on --install: it would also hide the .exe paths after the flag.
-complete -c hypergryph_launcher -l install -d "Extract a Hypergryph installer .exe into the prefix" \
-    -r -F -a '(__fish_complete_suffix .exe)'
-complete -c hypergryph_launcher -n "not $hypergryph_action" -l kill -d "Kill the launcher's wineserver"
+for launcher in hypergryph_launcher hypergryph_launcher_daily
+    # No condition on --install: it would also hide the .exe paths after the flag.
+    complete -c $launcher -l install -d "Extract a Hypergryph installer .exe into the prefix" \
+        -r -F -a '(__fish_complete_suffix .exe)'
+    complete -c $launcher -n "not $hypergryph_action" -l kill -d "Kill the launcher's wineserver"
+    complete -c $launcher -l session-id -r -d "Register the nested labwc session by ID"
+end
 
 set -l re1999_action '__fish_seen_argument -l install -l kill'
 complete -c re1999 -l install -d "Run a Reverse: 1999 installer .exe in the game prefix" \

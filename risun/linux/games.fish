@@ -601,87 +601,7 @@ function wuwa_daily_kill --description "Stop Wuthering Waves daily by killing it
     _game_kill --prefix "$HOME/Games/wuwa_daily" $argv
 end
 
-# --- Arknights: Endfield -----------------------------------------------------
-
-function endfield --description "Launch Arknights Endfield via umu-run, retrying the anti-cheat startup race"
-    if not contains -- --wait $argv
-        _game_detach endfield $argv
-        return
-    end
-
-    argparse --ignore-unknown 'retry-times=' -- $argv
-    or return 1
-
-    set -l game_dir "$HOME/Games/arknights-endfield/drive_c/Program Files/Hypergryph Launcher/games/Arknights Endfield"
-
-    # ACE's kernel driver resolves ntoskrnl routines Proton only stubs, and a
-    # stub raises instead of returning. When that exception escapes ACE's own
-    # handler it kills winedevice.exe and the game dies within seconds, before
-    # a window ever appears. Which call turns fatal differs per launch, so a
-    # fresh attempt usually gets through -- retry by default here.
-    set -l retry_times 5
-    test -n "$_flag_retry_times"; and set retry_times $_flag_retry_times
-
-    _game_run \
-        --name endfield \
-        --exe "$game_dir/Endfield.exe" \
-        --prefix "$HOME/Games/arknights-endfield" \
-        --gameid umu-arknights-endfield \
-        --cwd "$game_dir" \
-        --retry-times $retry_times \
-        $argv
-end
-
-function arknights --description "Launch Arknights via umu-run"
-    if not contains -- --wait $argv
-        _game_detach arknights $argv
-        return
-    end
-
-    set -l game_dir "$HOME/Games/arknights-endfield/drive_c/Program Files/Hypergryph Launcher/games/Arknights"
-    _game_run \
-        --name arknights \
-        --exe "$game_dir/Arknights.exe" \
-        --prefix "$HOME/Games/arknights-endfield" \
-        --gameid umu-arknights \
-        --cwd "$game_dir" \
-        $argv
-end
-
-function arknights_kill --description "Stop Arknights by killing its wineserver"
-    _game_kill --prefix "$HOME/Games/arknights-endfield" $argv
-end
-
-function endfield_daily --description "Launch Arknights Endfield daily build inside a labwc session"
-    if not contains -- --wait $argv
-        _game_detach endfield_daily $argv
-        return
-    end
-
-    argparse --ignore-unknown 'session-id=' -- $argv
-    or return 1
-
-    set -l session_args
-    set -q _flag_session_id; and set session_args --session-id "$_flag_session_id"
-
-    _game_run \
-        --name endfield_daily \
-        --exe "$HOME/Games/.bin/Arknights Endfield/Endfield.exe" \
-        --prefix "$HOME/Games/arknights_endfield_daily" \
-        --cwd "$HOME/Games/.bin/Arknights Endfield" \
-        --labwc \
-        --disable-wayland \
-        $session_args \
-        $argv
-end
-
-function endfield_kill --description "Stop Arknights Endfield by killing its wineserver"
-    _game_kill --prefix "$HOME/Games/arknights-endfield" $argv
-end
-
-function endfield_daily_kill --description "Stop Arknights Endfield daily build by killing its wineserver"
-    _game_kill --prefix "$HOME/Games/arknights_endfield_daily" $argv
-end
+# --- Hypergryph Launcher ----------------------------------------------------
 
 # The installer is an NSIS archive, so its payload is extracted directly
 # instead of running it under Wine.
@@ -749,13 +669,15 @@ end
 
 # With no action flag this launches the launcher. --install and --kill each do
 # only their own job and are exclusive.
-function hypergryph_launcher --description "Install, launch, or kill the Hypergryph launcher"
+function _hypergryph_launcher_run --description "Install, launch, or kill a Hypergryph launcher prefix"
+    set -l name $argv[1]
+    set -l prefix $argv[2]
+    set -e argv[1..2]
+
     # argparse consumes the flags; keep them for the detached rerun.
     set -l launch_args $argv
     argparse --ignore-unknown --exclusive install,kill 'install=' 'kill' -- $argv
     or return 1
-
-    set -l prefix "$HOME/Games/arknights-endfield"
 
     if set -q _flag_kill
         _game_kill --prefix "$prefix" $argv
@@ -768,16 +690,31 @@ function hypergryph_launcher --description "Install, launch, or kill the Hypergr
     end
 
     if not contains -- --wait $launch_args
-        _game_detach hypergryph_launcher $launch_args
+        _game_detach $name $launch_args
         return
     end
 
+    set -l run_args --gameid umu-arknights-endfield
+    if test "$name" = hypergryph_launcher_daily
+        set run_args --labwc --disable-wayland
+    end
+
+    set -l launcher_dir "$prefix/drive_c/Program Files/Hypergryph Launcher"
     _game_run \
-        --name hypergryph_launcher \
-        --exe "$prefix/drive_c/Program Files/Hypergryph Launcher/Launcher.exe" \
+        --name "$name" \
+        --exe "$launcher_dir/Launcher.exe" \
         --prefix "$prefix" \
-        --gameid umu-arknights-endfield \
+        --cwd "$launcher_dir" \
+        $run_args \
         $argv
+end
+
+function hypergryph_launcher --description "Install, launch, or kill the Hypergryph launcher"
+    _hypergryph_launcher_run hypergryph_launcher "$HOME/Games/arknights-endfield" $argv
+end
+
+function hypergryph_launcher_daily --description "Install, launch in labwc, or kill the daily Hypergryph launcher"
+    _hypergryph_launcher_run hypergryph_launcher_daily "$HOME/Games/arknights_endfield_daily" $argv
 end
 
 # --- Reverse: 1999 ----------------------------------------------------------
