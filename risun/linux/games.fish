@@ -387,7 +387,7 @@ function _wuwa_run --description "Launch Wuthering Waves with a swapped save dir
         --env SteamOS=1 \
         $session_args \
         $argv \
-        -krqlv=uhd \
+        -krqlv=hd \
         $csharp_args
 end
 
